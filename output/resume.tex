@@ -1,0 +1,232 @@
+% !TeX program = pdflatex
+% Resume template - layout driven by rules.yaml, content from master.yaml
+
+\documentclass[10pt, letterpaper]{article}
+
+% Font - TeX Gyre Termes is metrically identical to Times New Roman
+\usepackage[T1]{fontenc}
+\usepackage{mathptmx}
+
+% Layout
+\usepackage[
+  top=0.5in, bottom=0.5in, left=0.6in, right=0.6in
+]{geometry}
+
+% Utilities
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{setspace}
+\usepackage{titlesec}
+
+% Tighter line spacing
+\linespread{0.95}
+
+% Hyperref
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=black,
+  citecolor=black,
+  pdftitle={Aaryan Kandiah},
+  pdfauthor={Aaryan Kandiah}
+}
+\urlstyle{same}
+
+% Section heading - bold with horizontal line
+\titleformat{\section}{\bfseries\uppercase}{}{0em}{}[\titlerule]
+\titlespacing{\section}{0pt}{4pt}{1pt}
+
+% Compact lists
+\setlist[itemize]{
+  leftmargin=1.2em,
+  topsep=0pt,
+  partopsep=0pt,
+  parsep=0pt,
+  itemsep=0pt,
+  before=\vspace{0pt},
+  after=\vspace{0pt},
+  label=\textbullet
+}
+
+% No paragraph skip or indent
+\setlength{\parskip}{0pt}
+\setlength{\parindent}{0pt}
+
+% Start an entry on the next page when its introduction would be stranded.
+\newcommand{\keepentryintro}[1]{%
+  \par
+  \ifdim\pagegoal<\maxdimen
+    \ifdim\dimexpr\pagegoal-\pagetotal\relax<#1\baselineskip
+      \newpage
+    \fi
+  \fi
+}
+
+\pagestyle{empty}
+
+\begin{document}
+
+% Header
+\begin{center}
+  {\bfseries \fontsize{14}{16}\selectfont Aaryan Kandiah} \\
+  \vspace{0pt}
+  Email: aaryan.kandiah@u.nus.edu \textbar{} Contact: +65 87217899 \textbar{} \href{https://github.com/Aaryan126}{Github} \textbar{} \href{https://www.linkedin.com/in/aaryan-kandiah/}{Linkedin} \\
+  \vspace{0pt}
+  Applied AI Engineer | Agentic AI \textperiodcentered{} RAG \textperiodcentered{} Data Pipelines | Available May - August 2027
+\end{center}
+\vspace{0pt}
+
+% Summary
+\section*{PROFESSIONAL SUMMARY}
+\vspace{2pt}
+AI engineer and NUS Master of Computing (AI) student with a year of engineering experience at Univers, building RAG-based agentic platforms and on-premises LLM deployments for clients, plus an internal AI monitoring service. 2\texttimes{} 1st-place winner and 1st runner-up at AI competitions, building multi-agent systems, retrieval pipelines and MCP integrations. High-agency builder who takes prototypes through to deployed, working systems.
+
+\vspace{2pt}
+
+% Sections
+\section*{WORK EXPERIENCE}
+\vspace{2pt}
+\noindent\begin{tabular*}{\textwidth}{@{}l@{\extracolsep{\fill}}r@{}}  \textbf{Univers, AI Innovation Engineer Intern}\textnormal{\hspace{0.3em}\textbar{}\hspace{0.3em}Python, Java, TypeScript, React, Docker} & May 2025 – Apr 2026 \\\\\end{tabular*}
+\vspace{-15pt}
+\begin{itemize}
+  \item Engineered full-stack AI HVAC Agentic Platform for internal GTM and engineering teams, featuring RAG architecture with VectorDB, context-aware recommendations, role-based reasoning, and AI-powered sales enablement tools increasing GTM team productivity by \textasciitilde{}25\%.
+  \item Optimised Java backend and React/TypeScript frontend energy-saving dashboards for 8 clients; debugged critical backend API endpoints, implemented real-time chatbot streaming, natural language data queries, and interactive visualisations, reducing load time by 20\%.
+  \item Deployed 2 on-premises AI HVAC solutions on dedicated hardware with local LLM hosting, configuring end-to-end AI dashboards and backend/frontend services via Dockerized deployments on Linux servers, enabling AI capabilities with zero cloud dependency.
+  \item Built internal AI monitoring service to detect anomalous data in real-time across client-facing dashboards, with automated notifications to engineering team, reducing incident response time by \textasciitilde{}40\%.
+\end{itemize}
+\vspace{2pt}
+\section*{EDUCATION}
+\vspace{2pt}
+\noindent\begin{tabular*}{\textwidth}{@{}l@{\extracolsep{\fill}}r@{}}  \textbf{National University of Singapore} (NUS) & Aug 2026 – Dec 2027 (Expected) \\\\\end{tabular*}
+\vspace{-15pt}
+\begin{itemize}
+  \item Master of Computing (Artificial Intelligence)
+  \item Relevant Modules: (1) \textit{Neural Networks and Deep Learning} [Linear Algebra, Transformer Architecture] (2) \textit{Distributed Systems} [RPC/RMI, Multithreading, Consistency \& Replication] (3) \textit{Reinforcement Learning and Sequential Decision Making} [Markov Decision Processes, Rational Decision Making]
+\end{itemize}
+\vspace{2pt}
+\noindent\begin{tabular*}{\textwidth}{@{}l@{\extracolsep{\fill}}r@{}}  \textbf{Nanyang Technological University} (NTU) & Aug 2022 – Dec 2025 \\\\\end{tabular*}
+\vspace{-15pt}
+\begin{itemize}
+  \item Bachelor of Engineering (Electrical and Electronic Engineering)
+  \item Specialisation: Data Analysis and Machine Learning
+  \item Honours (Distinction) CGPA: 4.36 / 5.00
+  \item Relevant Modules: (1) \textit{Data Structures and Algorithms} (2) \textit{Machine Learning Design \& Application} [Large Language Models, Transformer Architecture, Attention Mechanism] (3) \textit{Intelligent Systems Design} [Deep Learning, Computer Vision, Statistical Pattern Recognition]
+\end{itemize}
+\vspace{2pt}
+\textbf{Virtual Training and Learning \& Development}
+\begin{itemize}
+  \item Amazon Web Services (AWS) Certification: \textit{AI Practitioner}
+  \item Google Certification: \textit{Advanced Data Analytics Certificate}
+\end{itemize}
+\section*{ACADEMIC PROJECTS / COMPETITION PROJECT / RESEARCH EXPERIENCE}
+\vspace{2pt}
+\keepentryintro{6}
+\noindent\begin{tabular*}{\textwidth}{@{}l@{\extracolsep{\fill}}r@{}}  \textbf{AI Workflow Competition, Echelon 2026 – 1st Place}\textnormal{\hspace{0.3em}\textbar{}\hspace{0.3em}FastAPI, LangChain, Python, Next.js} & Jun 2026 \\\\\end{tabular*}
+\nopagebreak
+\par\vspace{-16pt}
+\noindent\textit{Project: BOLDR SignalDesk – Approval-First AI Customer Intelligence Workflow for SME Support}
+\nopagebreak
+\par\vspace{3pt}
+\begin{itemize}
+  \item Secured \$16,000 in prizes for architecting a human-in-the-loop AI platform automating SME customer support, spanning evidence-grounded reply drafting and marketing-intel generation from resolved queries.
+  \item Developed multi-source evidence retrieval pipeline (FastAPI backend) unifying policy, product, and pricing documents into a single structured knowledge base for real-time reply drafting.
+  \item Directed reply drafting and customer service resolutions via LangChain-based GLM-5.1 orchestration layer with deterministic fallback logic, sustaining \textasciitilde{}96\% answerability accuracy.
+  \item Designed self-improving knowledge loop that converts human-resolved gaps into reusable knowledge-base entries, reducing repeat escalations and projecting \textasciitilde{}24 hours/week of support time saved at pilot scale.
+\end{itemize}
+\vspace{4pt}
+\keepentryintro{6}
+\noindent\begin{tabular*}{\textwidth}{@{}l@{\extracolsep{\fill}}r@{}}  \textbf{Agent Forge AI Hackathon (Z.ai and GMI Cloud) – 1st Place}\textnormal{\hspace{0.3em}\textbar{}\hspace{0.3em}FastAPI, LangChain, Python, React} & Apr 2026 \\\\\end{tabular*}
+\nopagebreak
+\par\vspace{-16pt}
+\noindent\textit{Project: ADapt – AI-Powered Ad Localization Platform for Southeast Asian Markets}
+\nopagebreak
+\par\vspace{3pt}
+\begin{itemize}
+  \item Awarded 1st place for building an end-to-end AI pipeline, localising ads across 6 SEA countries, generating culturally adapted strategies, multilingual copy, and localised imagery from text or image input.
+  \item Architected a multi-model orchestration system (FastAPI + React) chaining GPT-5.4 (vision/text input), GLM-5.1 (strategy \& copywriting), and Gemini 3.1 Flash (image generation) via GMI Cloud APIs.
+  \item Implemented image-to-image editing via Gemini 3.1 Flash multi-turn contents format, enabling surgical edits (e.g., product swaps) that preserve original ad composition.
+  \item Integrated Publer for direct TikTok publishing, enabling end-to-end workflow from ad ingestion to live social deployment in under 3 minutes.
+\end{itemize}
+\vspace{4pt}
+\keepentryintro{6}
+\noindent\begin{tabular*}{\textwidth}{@{}l@{\extracolsep{\fill}}r@{}}  \textbf{NTU-EEE Module: Final Year Project}\textnormal{\hspace{0.3em}\textbar{}\hspace{0.3em}PyTorch, Scikit-learn, OpenCV, Python} & Jan 2025 – Dec 2025 \\\\\end{tabular*}
+\nopagebreak
+\par\vspace{-16pt}
+\noindent\textit{Module Project: Multi-Label Chest X-ray Abnormality Detection Using Deep Learning and Explainable AI}
+\nopagebreak
+\par\vspace{3pt}
+\begin{itemize}
+  \item Developed multi-label classification model using modified DenseNet-121 in PyTorch to detect 14 thoracic abnormalities (e.g., pneumonia, cardiomegaly) from the NIH Chest X-ray dataset (\textasciitilde{}112k images).
+  \item Implemented custom weighted loss function to address class imbalance, reducing false negatives by 15\%.
+  \item Improved model generalisation through data augmentation and batch normalisation, achieving average AUC score of 0.845, matching performance of several state-of-the-art CXR studies.
+  \item Integrated Grad-CAM Explainable AI for clinical interpretability of model predictions on X-ray regions.
+\end{itemize}
+\vspace{4pt}
+\keepentryintro{6}
+\noindent\begin{tabular*}{\textwidth}{@{}l@{\extracolsep{\fill}}r@{}}  \textbf{Qoder x Alibaba Cloud Hackathon – 1st Runner-Up}\textnormal{\hspace{0.3em}\textbar{}\hspace{0.3em}TypeScript, React, Node.js, Python} & Aug 2026 \\\\\end{tabular*}
+\nopagebreak
+\par\vspace{-16pt}
+\noindent\textit{Project: Trace – Local-First AI Decision-Memory Platform}
+\nopagebreak
+\par\vspace{3pt}
+\begin{itemize}
+  \item Constructed a local-first AI platform that autonomously captures browser research and organises evolving decisions into Git-inspired threads, branches and commits, mitigating the need to re-research past decisions.
+  \item Engineered an autonomous evidence-routing pipeline that classifies and files research within 10-25 seconds and reconciles compatible conclusions across branches at 95\%+ confidence with no human approval step.
+  \item Integrated Trace with Qoder via a read-only MCP server exposing 5 decision-retrieval tools (search, trace history, current answer, constraints, prior regrets), for direct in-IDE access.
+  \item Developed a React decision-history canvas, a privacy-aware Chrome capture extension, and a native SwiftUI menu-bar app, forming a full local-first system spanning capture, storage, and UI.
+\end{itemize}
+\vspace{4pt}
+\keepentryintro{6}
+\noindent\begin{tabular*}{\textwidth}{@{}l@{\extracolsep{\fill}}r@{}}  \textbf{Independent Project}\textnormal{\hspace{0.3em}\textbar{}\hspace{0.3em}Elasticsearch, MCP, ES|QL, Python} & Feb 2026 \\\\\end{tabular*}
+\nopagebreak
+\par\vspace{-16pt}
+\noindent\textit{Project: Research Orchestration System – AI Literature Review \& Claim Verification Agent}
+\nopagebreak
+\par\vspace{3pt}
+\begin{itemize}
+  \item Built a multi-agent AI system automating literature reviews and claim verification across \textasciitilde{}200 papers (\textasciitilde{}5,000 chunks indexed in Elasticsearch), orchestrating three agents in an iterative feedback loop.
+  \item Designed a Research Agent pipeline that decomposes queries into sub-questions, scopes the corpus via ES|QL, and retrieves evidence through hybrid keyword and semantic search.
+  \item Implemented a Peer Review Agent that verifies citations, audits confidence tags claim-by-claim, and returns actionable revision feedback, enforcing a structured PASS/REVISION\_NEEDED verdict loop.
+  \item Developed a custom indexing pipeline (PDF parsing, chunking, 384-dim embeddings) and exposed the system via React web app, Slack bot, REST API, and MCP endpoint.
+\end{itemize}
+\vspace{4pt}
+\keepentryintro{6}
+\noindent\begin{tabular*}{\textwidth}{@{}l@{\extracolsep{\fill}}r@{}}  \textbf{NTU-EEE Module: Computer Vision}\textnormal{\hspace{0.3em}\textbar{}\hspace{0.3em}Scikit-learn, TensorFlow, Python} & Aug 2024 – Dec 2024 \\\\\end{tabular*}
+\nopagebreak
+\par\vspace{-16pt}
+\noindent\textit{Module Project: Enhancement of Brain Tumour Classification Using Dimensionality Reduction Techniques}
+\nopagebreak
+\par\vspace{3pt}
+\begin{itemize}
+  \item Benchmarked PCA, LDA, PCA+LDA, and Autoencoders against six classifiers on \textasciitilde{}4,000 MRI images, reducing 16,384-pixel dimensions to 1,413 (91\% reduction) while preserving 95\% of dataset variance.
+  \item Built a full preprocessing pipeline (resizing, augmentation, grayscaling, standard scaling) and evaluated all 24 model/reduction combinations on accuracy, precision, and recall.
+  \item Achieved up to 94.35\% accuracy with PCA despite a 91\% dimensionality reduction, outperforming LDA (\textasciitilde{}68\%) due to its linear class-separability assumption.
+\end{itemize}
+\vspace{4pt}
+\keepentryintro{6}
+\noindent\begin{tabular*}{\textwidth}{@{}l@{\extracolsep{\fill}}r@{}}  \textbf{Undergraduate Research (URECA)}\textnormal{\hspace{0.3em}\textbar{}\hspace{0.3em}PyTorch, Python} & Aug 2023 – May 2024 \\\\\end{tabular*}
+\nopagebreak
+\par\vspace{-16pt}
+\noindent\textit{Module Project: Fairness Analysis for New Interpretable Machine Learning Architecture (TTnet)}
+\nopagebreak
+\par\vspace{3pt}
+\begin{itemize}
+  \item Benchmarked Truth Table Net (TTnet), an inherently interpretable CNN architecture, against 4 models (XGBoost, Decision Tree, CNN, FairCORELS V2) across 6 fairness metrics on COMPAS and Adult datasets, concluding TTnet fairest on 5 of 6 metrics while also leading on accuracy (84\% vs. 78–82\% on Adult).
+  \item Implemented a fairness-aware training method using proxy-metric loss functions, differentiable approximations that enable gradient descent on otherwise non-differentiable fairness constraints.
+\end{itemize}
+\vspace{4pt}
+\section*{SKILLS}
+\vspace{2pt}
+\begin{itemize}
+  \item \textbf{Programming Languages:} Python, Java, TypeScript/JavaScript, SQL
+  \item \textbf{Agentic AI \& LLM:} Multi-agent orchestration, RAG (Hybrid search, Embeddings), MCP, LangChain, LLM evaluation, LLM API integration
+  \item \textbf{Data \& Backend:} FastAPI, REST APIs, Data pipelines, Elasticsearch/ES|QL, PostgreSQL, Redis, Vector DBs, Node.js
+  \item \textbf{Cloud \& DevOps:} AWS, Docker, Kubernetes, Linux, Git, GitHub Actions, CI/CD
+  \item \textbf{ML:} PyTorch, TensorFlow, Scikit-learn, OpenCV, Pandas
+  \item \textbf{Dev Tools:} Claude Code, Antigravity, Cursor, Codex
+  \item \textbf{Languages:} Proficient in English; conversant in Hindi and French
+\end{itemize}
+\vspace{4pt}
+
+\end{document}

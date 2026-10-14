@@ -1,0 +1,30 @@
+# Layout & hard rules - all values code-enforced
+# Edit this file to change layout; no code changes needed.
+
+layout:
+  font: "TeX Gyre Termes"  # "TeX Gyre Termes" or "Times New Roman" (TNR requires XeLaTeX/LuaLaTeX)
+  font_size: "10pt"
+  margins:
+    top: "0.5in"
+    bottom: "0.5in"
+    left: "0.6in"
+    right: "0.6in"
+  page_limit: 2
+  max_projects: 7
+  max_bullet_lines: 2
+  project_intro_min_lines: 6  # Reserve space for the project heading, title, and first bullet
+  section_order:
+    - experience
+    - education
+    - projects
+    - skills
+  # Latex compiler to use: "pdflatex", "xelatex", "lualatex"
+  compiler: "pdflatex"
+  # Page size: "letterpaper" or "a4paper"
+  page_size: "letterpaper"
+
+content:
+  # How many projects to include (0 = include all)
+  max_projects_render: 7
+  # Maximum bullets per project/experience entry (0 = unlimited)
+  max_bullets_per_entry: 4

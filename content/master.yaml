@@ -1,0 +1,265 @@
+contact:
+  name: Aaryan Kandiah
+  email: aaryan.kandiah@u.nus.edu
+  phone: "+65 87217899"
+  github: "https://github.com/Aaryan126"
+  linkedin: "https://www.linkedin.com/in/aaryan-kandiah/"
+  seeking: "Applied AI Engineer | Agentic AI · RAG · Data Pipelines | Available May - August 2027"
+
+summary: >
+  AI engineer and NUS Master of Computing (AI) student with a year of engineering experience at Univers, building RAG-based agentic platforms and on-premises LLM deployments for clients, plus an internal AI monitoring service. 2× 1st-place winner and 1st runner-up at AI competitions, building multi-agent systems, retrieval pipelines and MCP integrations. High-agency builder who takes prototypes through to deployed, working systems.
+
+education:
+  - institution: "National University of Singapore (NUS)"
+    degree: "Master of Computing (Artificial Intelligence)"
+    dates: "Aug 2026 – Dec 2027 (Expected)"
+    modules:
+      - "(1) Neural Networks and Deep Learning [Linear Algebra, Transformer Architecture]"
+      - "(2) Distributed Systems [RPC/RMI, Multithreading, Consistency & Replication]"
+      - "(3) Reinforcement Learning and Sequential Decision Making [Markov Decision Processes, Rational Decision Making]"
+    italic_module_indices: [0, 1, 2]
+    tags: [deep-learning, transformers, reinforcement-learning, distributed-systems]
+
+  - institution: "Nanyang Technological University (NTU)"
+    degree: "Bachelor of Engineering (Electrical and Electronic Engineering)"
+    dates: "Aug 2022 – Dec 2025"
+    specialisation: "Data Analysis and Machine Learning"
+    honours: "Honours (Distinction)"
+    gpa: "CGPA: 4.36 / 5.00"
+    modules:
+      - "(1) Data Structures and Algorithms"
+      - "(2) Machine Learning Design & Application [Large Language Models, Transformer Architecture, Attention Mechanism]"
+      - "(3) Intelligent Systems Design [Deep Learning, Computer Vision, Statistical Pattern Recognition]"
+    italic_module_indices: [0, 1, 2]
+    tags: [data-science, machine-learning, ml-engineering]
+
+experience:
+  - company: "Univers"
+    role: "AI Innovation Engineer Intern"
+    tech: "Python, Java, TypeScript, React, Docker"
+    dates: "May 2025 – Apr 2026"
+    bullets:
+      - id: exp1-b1
+        text: >
+          Engineered full-stack AI HVAC Agentic Platform for internal GTM and engineering teams, featuring RAG architecture with VectorDB, context-aware recommendations, role-based reasoning, and AI-powered sales enablement tools increasing GTM team productivity by ~25%.
+        tags: [ai, agentic-systems, rag, vector-db, sales-enablement]
+      - id: exp1-b2
+        text: >
+          Optimised Java backend and React/TypeScript frontend energy-saving dashboards for 8 clients; debugged critical backend API endpoints, implemented real-time chatbot streaming, natural language data queries, and interactive visualisations, reducing load time by 20%.
+        tags: [java, react, typescript, optimization, chatbot, data-visualization]
+      - id: exp1-b3
+        text: >
+          Deployed 2 on-premises AI HVAC solutions on dedicated hardware with local LLM hosting, configuring end-to-end AI dashboards and backend/frontend services via Dockerized deployments on Linux servers, enabling AI capabilities with zero cloud dependency.
+        tags: [deployment, llm, on-prem, docker, linux]
+      - id: exp1-b4
+        text: >
+          Built internal AI monitoring service to detect anomalous data in real-time across client-facing dashboards, with automated notifications to engineering team, reducing incident response time by ~40%.
+        tags: [monitoring, ai, anomaly-detection, automation]
+
+certifications:
+  - title: "Amazon Web Services (AWS) Certification: AI Practitioner"
+    org: "Virtual Training and Learning & Development"
+    tags: [aws, ai]
+  - title: "Google Certification: Advanced Data Analytics Certificate"
+    org: "Virtual Training and Learning & Development"
+    tags: [google, data-analytics]
+
+projects:
+  - name: "BOLDR SignalDesk – Approval-First AI Customer Intelligence Workflow for SME Support"
+    competition: "AI Workflow Competition, Echelon 2026"
+    placement: "1st Place"
+    tech: "FastAPI, LangChain, Python, Next.js"
+    dates: "Jun 2026"
+    bullets:
+      - id: proj1-b1
+        text: >
+          Secured $16,000 in prizes for architecting a human-in-the-loop AI platform automating SME customer support, spanning evidence-grounded reply drafting and marketing-intel generation from resolved queries.
+        tags: [ai, human-in-the-loop, customer-support, competition-winning]
+      - id: proj1-b2
+        text: >
+          Developed multi-source evidence retrieval pipeline (FastAPI backend) unifying policy, product, and pricing documents into a single structured knowledge base for real-time reply drafting.
+        tags: [rag, retrieval, fastapi, knowledge-base]
+      - id: proj1-b3
+        text: >
+          Directed reply drafting and customer service resolutions via LangChain-based GLM-5.1 orchestration layer with deterministic fallback logic, sustaining ~96% answerability accuracy.
+        tags: [langchain, llm, orchestration, fallback-logic]
+      - id: proj1-b4
+        text: >
+          Designed self-improving knowledge loop that converts human-resolved gaps into reusable knowledge-base entries, reducing repeat escalations and projecting ~24 hours/week of support time saved at pilot scale.
+        tags: [knowledge-management, self-improving, efficiency]
+    tags: [rag, agentic-systems, customer-support, langchain, fastapi]
+
+  - name: "ADapt – AI-Powered Ad Localization Platform for Southeast Asian Markets"
+    competition: "Agent Forge AI Hackathon (Z.ai and GMI Cloud)"
+    placement: "1st Place"
+    tech: "FastAPI, LangChain, Python, React"
+    dates: "Apr 2026"
+    bullets:
+      - id: proj2-b1
+        text: >
+          Awarded 1st place for building an end-to-end AI pipeline, localising ads across 6 SEA countries, generating culturally adapted strategies, multilingual copy, and localised imagery from text or image input.
+        tags: [ai, localization, nlp, competition-winning]
+      - id: proj2-b2
+        text: >
+          Architected a multi-model orchestration system (FastAPI + React) chaining GPT-5.4 (vision/text input), GLM-5.1 (strategy & copywriting), and Gemini 3.1 Flash (image generation) via GMI Cloud APIs.
+        tags: [multi-model, orchestration, llm, vision, cloud-apis]
+      - id: proj2-b3
+        text: >
+          Implemented image-to-image editing via Gemini 3.1 Flash multi-turn contents format, enabling surgical edits (e.g., product swaps) that preserve original ad composition.
+        tags: [image-editing, gemini, vision-models]
+      - id: proj2-b4
+        text: >
+          Integrated Publer for direct TikTok publishing, enabling end-to-end workflow from ad ingestion to live social deployment in under 3 minutes.
+        tags: [api-integration, social-media, tiktok, automation]
+    tags: [multi-model, agentic-systems, ad-tech, langchain, fastapi]
+
+  - name: "Multi-Label Chest X-ray Abnormality Detection Using Deep Learning and Explainable AI"
+    competition: "NTU-EEE Module: Final Year Project"
+    project_label: "Module Project"
+    tech: "PyTorch, Scikit-learn, OpenCV, Python"
+    dates: "Jan 2025 – Dec 2025"
+    bullets:
+      - id: proj5-b1
+        text: >
+          Developed multi-label classification model using modified DenseNet-121 in PyTorch to detect 14 thoracic abnormalities (e.g., pneumonia, cardiomegaly) from the NIH Chest X-ray dataset (~112k images).
+        tags: [deep-learning, medical-imaging, pytorch, classification]
+      - id: proj5-b2
+        text: >
+          Implemented custom weighted loss function to address class imbalance, reducing false negatives by 15%.
+        tags: [loss-functions, class-imbalance, optimization]
+      - id: proj5-b3
+        text: >
+          Improved model generalisation through data augmentation and batch normalisation, achieving average AUC score of 0.845, matching performance of several state-of-the-art CXR studies.
+        tags: [data-augmentation, batch-normalization, auc]
+      - id: proj5-b4
+        text: >
+          Integrated Grad-CAM Explainable AI for clinical interpretability of model predictions on X-ray regions.
+        tags: [xai, grad-cam, medical-ai, interpretability]
+    tags: [medical-ai, deep-learning, pytorch, explainable-ai, computer-vision]
+
+  - name: "Trace – Local-First AI Decision-Memory Platform"
+    competition: "Qoder x Alibaba Cloud Hackathon"
+    placement: "1st Runner-Up"
+    tech: "TypeScript, React, Node.js, Python"
+    dates: "Aug 2026"
+    bullets:
+      - id: proj3-b1
+        text: >
+          Constructed a local-first AI platform that autonomously captures browser research and organises evolving decisions into Git-inspired threads, branches and commits, mitigating the need to re-research past decisions.
+        tags: [ai, knowledge-graph, local-first, privacy]
+      - id: proj3-b2
+        text: >
+          Engineered an autonomous evidence-routing pipeline that classifies and files research within 10-25 seconds and reconciles compatible conclusions across branches at 95%+ confidence with no human approval step.
+        tags: [pipeline, automation, classification, nlp]
+      - id: proj3-b3
+        text: >
+          Integrated Trace with Qoder via a read-only MCP server exposing 5 decision-retrieval tools (search, trace history, current answer, constraints, prior regrets), for direct in-IDE access.
+        tags: [mcp, api-design, ide-integration]
+      - id: proj3-b4
+        text: >
+          Developed a React decision-history canvas, a privacy-aware Chrome capture extension, and a native SwiftUI menu-bar app, forming a full local-first system spanning capture, storage, and UI.
+        tags: [react, chrome-extension, swiftui, cross-platform]
+    tags: [agentic-systems, knowledge-management, mcp, local-first]
+
+  - name: "Research Orchestration System – AI Literature Review & Claim Verification Agent"
+    competition: "Independent Project"
+    tech: "Elasticsearch, MCP, ES|QL, Python"
+    dates: "Feb 2026"
+    bullets:
+      - id: proj4-b1
+        text: >
+          Built a multi-agent AI system automating literature reviews and claim verification across ~200 papers (~5,000 chunks indexed in Elasticsearch), orchestrating three agents in an iterative feedback loop.
+        tags: [multi-agent, literature-review, elasticsearch, nlp]
+      - id: proj4-b2
+        text: >
+          Designed a Research Agent pipeline that decomposes queries into sub-questions, scopes the corpus via ES|QL, and retrieves evidence through hybrid keyword and semantic search.
+        tags: [rag, pipeline, query-optimization, elasticsearch]
+      - id: proj4-b3
+        text: >
+          Implemented a Peer Review Agent that verifies citations, audits confidence tags claim-by-claim, and returns actionable revision feedback, enforcing a structured PASS/REVISION_NEEDED verdict loop.
+        tags: [peer-review, citation-verification, multi-agent]
+      - id: proj4-b4
+        text: >
+          Developed a custom indexing pipeline (PDF parsing, chunking, 384-dim embeddings) and exposed the system via React web app, Slack bot, REST API, and MCP endpoint.
+        tags: [indexing, pdf-processing, embeddings, react]
+    tags: [multi-agent, rag, literature-review, elasticsearch, embeddings]
+
+  - name: "Enhancement of Brain Tumour Classification Using Dimensionality Reduction Techniques"
+    competition: "NTU-EEE Module: Computer Vision"
+    project_label: "Module Project"
+    tech: "Scikit-learn, TensorFlow, Python"
+    dates: "Aug 2024 – Dec 2024"
+    bullets:
+      - id: proj6-b1
+        text: >
+          Benchmarked PCA, LDA, PCA+LDA, and Autoencoders against six classifiers on ~4,000 MRI images, reducing 16,384-pixel dimensions to 1,413 (91% reduction) while preserving 95% of dataset variance.
+        tags: [dimensionality-reduction, pca, lda, autoencoders]
+      - id: proj6-b2
+        text: >
+          Built a full preprocessing pipeline (resizing, augmentation, grayscaling, standard scaling) and evaluated all 24 model/reduction combinations on accuracy, precision, and recall.
+        tags: [preprocessing, pipeline, classification, scikit-learn]
+      - id: proj6-b3
+        text: >
+          Achieved up to 94.35% accuracy with PCA despite a 91% dimensionality reduction, outperforming LDA (~68%) due to its linear class-separability assumption.
+        tags: [accuracy, dimensionality-reduction, pca]
+    tags: [computer-vision, medical-imaging, dimensionality-reduction, tensorflow]
+
+  - name: "Fairness Analysis for New Interpretable Machine Learning Architecture (TTnet)"
+    competition: "Undergraduate Research (URECA)"
+    project_label: "Module Project"
+    tech: "PyTorch, Python"
+    dates: "Aug 2023 – May 2024"
+    bullets:
+      - id: proj7-b1
+        text: >
+          Benchmarked Truth Table Net (TTnet), an inherently interpretable CNN architecture, against 4 models (XGBoost, Decision Tree, CNN, FairCORELS V2) across 6 fairness metrics on COMPAS and Adult datasets, concluding TTnet fairest on 5 of 6 metrics while also leading on accuracy (84% vs. 78–82% on Adult).
+        tags: [fairness, interpretable-ml, cnn, benchmarking]
+      - id: proj7-b2
+        text: >
+          Implemented a fairness-aware training method using proxy-metric loss functions, differentiable approximations that enable gradient descent on otherwise non-differentiable fairness constraints.
+        tags: [fairness-aware-training, loss-functions, optimization]
+    tags: [fairness, interpretable-ml, pytorch, research]
+
+skills:
+  "Programming Languages":
+    - Python
+    - Java
+    - TypeScript/JavaScript
+    - SQL
+  "Agentic AI & LLM":
+    - Multi-agent orchestration
+    - "RAG (Hybrid search, Embeddings)"
+    - MCP
+    - LangChain
+    - LLM evaluation
+    - LLM API integration
+  "Data & Backend":
+    - FastAPI
+    - REST APIs
+    - Data pipelines
+    - Elasticsearch/ES|QL
+    - PostgreSQL
+    - Redis
+    - Vector DBs
+    - Node.js
+  "Cloud & DevOps":
+    - AWS
+    - Docker
+    - Kubernetes
+    - Linux
+    - Git
+    - GitHub Actions
+    - CI/CD
+  "ML":
+    - PyTorch
+    - TensorFlow
+    - Scikit-learn
+    - OpenCV
+    - Pandas
+  "Dev Tools":
+    - Claude Code
+    - Antigravity
+    - Cursor
+    - Codex
+  "Languages":
+    - "Proficient in English; conversant in Hindi and French"
