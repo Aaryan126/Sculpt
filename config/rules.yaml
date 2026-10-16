@@ -1,30 +1,73 @@
-# Layout & hard rules - all values code-enforced
-# Edit this file to change layout; no code changes needed.
+# The approved appearance of the master PDF and its build limits.
+# build.py renders these values and checks the resulting PDF.
 
 layout:
-  font: "TeX Gyre Termes"  # "TeX Gyre Termes" or "Times New Roman" (TNR requires XeLaTeX/LuaLaTeX)
+  font: "Nimbus Roman No9 L"  # Times-style face embedded by mathptmx
+  font_package: "mathptmx"
   font_size: "10pt"
+  name_font_size: "14pt"
+  name_line_height: "16pt"
+  line_spread: 0.95
   margins:
     top: "0.5in"
     bottom: "0.5in"
     left: "0.6in"
     right: "0.6in"
   page_limit: 2
-  max_projects: 7
-  max_bullet_lines: 2
+  max_bullet_lines: 3  # Applies to experience, project, and skills bullets
+  header_lines: 3
+  max_summary_lines: 4
+  max_project_heading_lines: 1
+  max_project_title_lines: 1
   project_intro_min_lines: 6  # Reserve space for the project heading, title, and first bullet
+  overfull_tolerance_pt: 3  # Current PDF has one 2.154pt overfull line
   section_order:
     - experience
     - education
     - projects
     - skills
-  # Latex compiler to use: "pdflatex", "xelatex", "lualatex"
   compiler: "pdflatex"
-  # Page size: "letterpaper" or "a4paper"
   page_size: "letterpaper"
+  page_numbers: false
+  link_color: "black"
+  styles:
+    name: bold
+    section_heading: bold_uppercase_underlined
+    institution_name: bold
+    work_heading: bold
+    project_heading: bold
+    project_title: italic
+    module_title: italic
+    certification_name: italic
+    skills_label: bold
+    technologies: regular
+    dates: regular
+    bullets: regular
+  spacing:
+    section_before: "4pt"
+    section_after: "1pt"
+    section_content: "2pt"
+    header_line_gap: "0pt"
+    after_header: "0pt"
+    summary_after: "2pt"
+    paragraph_skip: "0pt"
+    paragraph_indent: "0pt"
+    list_left_margin: "1.2em"
+    list_top_sep: "0pt"
+    list_partop_sep: "0pt"
+    list_parse_sep: "0pt"
+    list_item_sep: "0pt"
+    list_before: "0pt"
+    list_after: "0pt"
+    education_header_to_details: "-15pt"
+    education_entry_after: "2pt"
+    work_header_to_bullets: "-15pt"
+    work_entry_after: "2pt"
+    project_header_to_title: "-16pt"
+    project_title_to_bullets: "3pt"
+    project_entry_after: "4pt"
+    skills_after: "4pt"
+    technology_separator: "0.3em"
 
 content:
-  # How many projects to include (0 = include all)
-  max_projects_render: 7
-  # Maximum bullets per project/experience entry (0 = unlimited)
-  max_bullets_per_entry: 4
+  max_bullets_per_entry: 4  # Work and project entries; projects themselves are unlimited

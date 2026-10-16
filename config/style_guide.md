@@ -1,19 +1,24 @@
 # Style Guide - soft rules for AI tailoring
 
-These are style recommendations the AI should follow when adapting resume content to job descriptions.
-They are NOT enforced by code (yet) — they guide AI output quality.
+These are content recommendations for adapting a separate tailored resume to a job description.
+Hard limits and the approved layout are enforced by `config/rules.yaml` plus
+`config/profiles/tailored.yaml`. The current web AI does not read this file; it follows
+its selection and wording prompts plus code-enforced rules. Wording suggestions require
+explicit user review before they enter a tailored PDF.
 
 ## Bullet Quality
 
 - Lead every bullet with a strong action verb (Engineered, Architected, Built, Implemented, etc.)
-- Bold key metrics and quantifiable results where they exist (e.g., **30% reduction**, **$16K prize**, **0.845 AUC**)
-- Estimate honest numbers where they add impact (e.g., "scaling from 10 to 100 users") — never invent facts
-- Keep each bullet to 1-2 lines in the final PDF (max 2 lines)
+- Include relevant, verified metrics where they exist. Bullet text remains regular weight, as defined by the current PDF rules.
+- Never estimate or invent numbers; use only figures supported by the master resume or explicitly supplied by the user.
+- Prefer concise bullets. The hard maximum is 3 physical lines in the final PDF for work, project, and skills bullets.
 - Use active voice; avoid passive constructions
 
 ## Content Prioritization
 
 - Place the most relevant projects for the target role first
+- Select exactly 5 projects from `content/master.yaml`, using their stable project IDs.
+- Select 3 or 4 existing bullets for entries with at least 4 source bullets. Keep every bullet from a source entry with only 2 or 3. Prefer 4 when all are relevant; never invent or pad a bullet to reach the minimum.
 - Tailor the summary to align with the job description's key requirements
 - Emphasize skills and technologies that match the JD
 - Remove or deprioritize projects unrelated to the target role
@@ -36,4 +41,5 @@ They are NOT enforced by code (yet) — they guide AI output quality.
 
 - Keep the formatting checkpoint locked — never modify layout without explicit approval
 - All tailoring changes should be content-only
-- Validate against rules.yaml after each AI iteration
+- Save tailored content in its own YAML file; do not alter `content/master.yaml`.
+- Build with the tailored profile, which inherits `rules.yaml` and requires exactly 5 projects.

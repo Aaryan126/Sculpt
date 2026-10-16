@@ -1,11 +1,11 @@
 % !TeX program = pdflatex
 % Resume template - layout driven by rules.yaml, content from master.yaml
 
-\documentclass[10pt, LAYOUT_PAGESIZE]{article}
+\documentclass[LAYOUT_FONT_SIZE, LAYOUT_PAGESIZE]{article}
 
-% Font - TeX Gyre Termes is metrically identical to Times New Roman
+% Nimbus Roman No9 L is supplied by mathptmx in this pdfLaTeX build.
 \usepackage[T1]{fontenc}
-\usepackage{mathptmx}
+\usepackage{LAYOUT_FONT_PACKAGE}
 
 % Layout
 \usepackage[
@@ -20,38 +20,38 @@
 \usepackage{titlesec}
 
 % Tighter line spacing
-\linespread{0.95}
+\linespread{LAYOUT_LINE_SPREAD}
 
 % Hyperref
 \hypersetup{
   colorlinks=true,
-  linkcolor=black,
-  urlcolor=black,
-  citecolor=black,
+  linkcolor=LAYOUT_LINK_COLOR,
+  urlcolor=LAYOUT_LINK_COLOR,
+  citecolor=LAYOUT_LINK_COLOR,
   pdftitle={RESUME_NAME},
   pdfauthor={RESUME_NAME}
 }
 \urlstyle{same}
 
 % Section heading - bold with horizontal line
-\titleformat{\section}{\bfseries\uppercase}{}{0em}{}[\titlerule]
-\titlespacing{\section}{0pt}{4pt}{1pt}
+\titleformat{\section}{LAYOUT_SECTION_STYLE}{}{0em}{}LAYOUT_SECTION_RULE
+\titlespacing{\section}{0pt}{LAYOUT_SECTION_BEFORE}{LAYOUT_SECTION_AFTER}
 
 % Compact lists
 \setlist[itemize]{
-  leftmargin=1.2em,
-  topsep=0pt,
-  partopsep=0pt,
-  parsep=0pt,
-  itemsep=0pt,
-  before=\vspace{0pt},
-  after=\vspace{0pt},
+  leftmargin=LAYOUT_LIST_LEFT_MARGIN,
+  topsep=LAYOUT_LIST_TOP_SEP,
+  partopsep=LAYOUT_LIST_PARTOP_SEP,
+  parsep=LAYOUT_LIST_PARSE_SEP,
+  itemsep=LAYOUT_LIST_ITEM_SEP,
+  before=\vspace{LAYOUT_LIST_BEFORE},
+  after=\vspace{LAYOUT_LIST_AFTER},
   label=\textbullet
 }
 
 % No paragraph skip or indent
-\setlength{\parskip}{0pt}
-\setlength{\parindent}{0pt}
+\setlength{\parskip}{LAYOUT_PARAGRAPH_SKIP}
+\setlength{\parindent}{LAYOUT_PARAGRAPH_INDENT}
 
 % Start an entry on the next page when its introduction would be stranded.
 \newcommand{\keepentryintro}[1]{%
@@ -63,25 +63,25 @@
   \fi
 }
 
-\pagestyle{empty}
+\pagestyle{LAYOUT_PAGE_STYLE}
 
 \begin{document}
 
 % Header
 \begin{center}
-  {\bfseries \fontsize{14}{16}\selectfont RESUME_NAME} \\
-  \vspace{0pt}
+  {LAYOUT_NAME_STYLE \fontsize{LAYOUT_NAME_FONT_SIZE}{LAYOUT_NAME_LINE_HEIGHT}\selectfont RESUME_NAME} \\
+  \vspace{LAYOUT_HEADER_LINE_GAP}
   Email: RESUME_EMAIL \textbar{} Contact: RESUME_PHONE \textbar{} \href{RESUME_GITHUB_URL}{Github} \textbar{} \href{RESUME_LINKEDIN_URL}{Linkedin} \\
-  \vspace{0pt}
+  \vspace{LAYOUT_HEADER_LINE_GAP}
   RESUME_SEEKING
 \end{center}
-\vspace{0pt}
+\vspace{LAYOUT_AFTER_HEADER}
 
 % Summary
 \section*{PROFESSIONAL SUMMARY}
-\vspace{2pt}
+\vspace{LAYOUT_SECTION_CONTENT}
 RESUME_SUMMARY
-\vspace{2pt}
+\vspace{LAYOUT_SUMMARY_AFTER}
 
 % Sections
 SECTION_ORDER

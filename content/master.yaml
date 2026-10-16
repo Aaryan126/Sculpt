@@ -17,7 +17,6 @@ education:
       - "(1) Neural Networks and Deep Learning [Linear Algebra, Transformer Architecture]"
       - "(2) Distributed Systems [RPC/RMI, Multithreading, Consistency & Replication]"
       - "(3) Reinforcement Learning and Sequential Decision Making [Markov Decision Processes, Rational Decision Making]"
-    italic_module_indices: [0, 1, 2]
     tags: [deep-learning, transformers, reinforcement-learning, distributed-systems]
 
   - institution: "Nanyang Technological University (NTU)"
@@ -30,7 +29,6 @@ education:
       - "(1) Data Structures and Algorithms"
       - "(2) Machine Learning Design & Application [Large Language Models, Transformer Architecture, Attention Mechanism]"
       - "(3) Intelligent Systems Design [Deep Learning, Computer Vision, Statistical Pattern Recognition]"
-    italic_module_indices: [0, 1, 2]
     tags: [data-science, machine-learning, ml-engineering]
 
 experience:
@@ -65,7 +63,8 @@ certifications:
     tags: [google, data-analytics]
 
 projects:
-  - name: "BOLDR SignalDesk – Approval-First AI Customer Intelligence Workflow for SME Support"
+  - id: proj1
+    name: "BOLDR SignalDesk – Approval-First AI Customer Intelligence Workflow for SME Support"
     competition: "AI Workflow Competition, Echelon 2026"
     placement: "1st Place"
     tech: "FastAPI, LangChain, Python, Next.js"
@@ -89,7 +88,8 @@ projects:
         tags: [knowledge-management, self-improving, efficiency]
     tags: [rag, agentic-systems, customer-support, langchain, fastapi]
 
-  - name: "ADapt – AI-Powered Ad Localization Platform for Southeast Asian Markets"
+  - id: proj2
+    name: "ADapt – AI-Powered Ad Localization Platform for Southeast Asian Markets"
     competition: "Agent Forge AI Hackathon (Z.ai and GMI Cloud)"
     placement: "1st Place"
     tech: "FastAPI, LangChain, Python, React"
@@ -113,7 +113,8 @@ projects:
         tags: [api-integration, social-media, tiktok, automation]
     tags: [multi-model, agentic-systems, ad-tech, langchain, fastapi]
 
-  - name: "Multi-Label Chest X-ray Abnormality Detection Using Deep Learning and Explainable AI"
+  - id: proj5
+    name: "Multi-Label Chest X-ray Abnormality Detection Using Deep Learning and Explainable AI"
     competition: "NTU-EEE Module: Final Year Project"
     project_label: "Module Project"
     tech: "PyTorch, Scikit-learn, OpenCV, Python"
@@ -137,7 +138,8 @@ projects:
         tags: [xai, grad-cam, medical-ai, interpretability]
     tags: [medical-ai, deep-learning, pytorch, explainable-ai, computer-vision]
 
-  - name: "Trace – Local-First AI Decision-Memory Platform"
+  - id: proj3
+    name: "Trace – Local-First AI Decision-Memory Platform"
     competition: "Qoder x Alibaba Cloud Hackathon"
     placement: "1st Runner-Up"
     tech: "TypeScript, React, Node.js, Python"
@@ -161,7 +163,8 @@ projects:
         tags: [react, chrome-extension, swiftui, cross-platform]
     tags: [agentic-systems, knowledge-management, mcp, local-first]
 
-  - name: "Research Orchestration System – AI Literature Review & Claim Verification Agent"
+  - id: proj4
+    name: "Research Orchestration System – AI Literature Review & Claim Verification Agent"
     competition: "Independent Project"
     tech: "Elasticsearch, MCP, ES|QL, Python"
     dates: "Feb 2026"
@@ -184,7 +187,8 @@ projects:
         tags: [indexing, pdf-processing, embeddings, react]
     tags: [multi-agent, rag, literature-review, elasticsearch, embeddings]
 
-  - name: "Enhancement of Brain Tumour Classification Using Dimensionality Reduction Techniques"
+  - id: proj6
+    name: "Enhancement of Brain Tumour Classification Using Dimensionality Reduction Techniques"
     competition: "NTU-EEE Module: Computer Vision"
     project_label: "Module Project"
     tech: "Scikit-learn, TensorFlow, Python"
@@ -204,7 +208,8 @@ projects:
         tags: [accuracy, dimensionality-reduction, pca]
     tags: [computer-vision, medical-imaging, dimensionality-reduction, tensorflow]
 
-  - name: "Fairness Analysis for New Interpretable Machine Learning Architecture (TTnet)"
+  - id: proj7
+    name: "Fairness Analysis for New Interpretable Machine Learning Architecture (TTnet)"
     competition: "Undergraduate Research (URECA)"
     project_label: "Module Project"
     tech: "PyTorch, Python"

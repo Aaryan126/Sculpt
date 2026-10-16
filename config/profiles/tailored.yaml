@@ -1,0 +1,5 @@
+# Only differences from config/rules.yaml. The master has no project count cap.
+content:
+  min_projects: 5
+  max_projects: 5
+  min_bullets_per_entry: 3  # Effective minimum is min(3, source bullets); prefer 4 where available
