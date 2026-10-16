@@ -1,13 +1,18 @@
 const byId = (id) => document.getElementById(id);
 const parseForm = byId("parse-form");
 const parseButton = byId("parse-button");
+const resetButton = byId("reset-button");
 const planButton = byId("plan-button");
 const draftButton = byId("draft-button");
 const finalizeButton = byId("finalize-button");
 const jdInput = byId("jd");
+const pastePanel = byId("paste-panel");
 const parsedPanel = byId("parsed-panel");
 const planPanel = byId("plan-panel");
 const wordingPanel = byId("wording-panel");
+const finalPanel = byId("final-panel");
+const previewPanel = byId("preview-panel");
+const layout = document.querySelector(".layout");
 const details = byId("details");
 const preview = byId("pdf-preview");
 const pdfLink = byId("pdf-link");
@@ -18,19 +23,71 @@ let selectionDraft = null;
 let openSuggestionId = null;
 let openGroupKeys = new Set();
 let previewRequestToken = 0;
+const activeRequests = new Set();
+let resetVersion = 0;
+let hasParsedJob = false;
+let parsedSourceText = "";
+
+const stepDetails = {
+  paste: [1, "Job description"],
+  parsed: [2, "Review parsed job"],
+  plan: [3, "Review structure"],
+  wording: [4, "Review wording"],
+  final: [5, "Finished resume"],
+};
+
+function showStep(step, scroll = true) {
+  for (const [name, panel] of Object.entries({ paste: pastePanel, parsed: parsedPanel, plan: planPanel, wording: wordingPanel, final: finalPanel })) {
+    panel.hidden = name !== step;
+  }
+  const [number, label] = stepDetails[step];
+  byId("wizard-progress-label").textContent = `Step ${number} of 5 · ${label}`;
+  byId("wizard-progress-fill").style.width = `${number * 20}%`;
+  if (scroll) window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showPdf(url, caption) {
+  previewRequestToken++;
+  preview.src = url;
+  pdfLink.href = url;
+  byId("preview-caption").textContent = caption;
+  previewPanel.hidden = false;
+  layout.classList.add("has-preview");
+}
+
+function closePdf() {
+  previewRequestToken++;
+  previewPanel.hidden = true;
+  layout.classList.remove("has-preview");
+  preview.src = "about:blank";
+  pdfLink.removeAttribute("href");
+}
 
 function setStatus(message, kind = "") {
   byId("status").textContent = message;
   byId("status").className = `status ${kind}`.trim();
+  byId("status").hidden = false;
 }
 
 async function postJson(url, body) {
-  const response = await fetch(url, {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-  });
-  const result = await response.json();
-  if (!response.ok) throw new Error([result.error, result.details].filter(Boolean).join("\n\n"));
-  return result;
+  const controller = new AbortController();
+  activeRequests.add(controller);
+  try {
+    const response = await fetch(url, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body), signal: controller.signal,
+    });
+    const result = await response.json();
+    if (controller.signal.aborted) throw new DOMException("Request cancelled", "AbortError");
+    if (!response.ok) throw new Error([result.error, result.details].filter(Boolean).join("\n\n"));
+    return result;
+  } finally {
+    activeRequests.delete(controller);
+  }
+}
+
+function showRequestError(error) {
+  if (error.name !== "AbortError") setStatus(error.message, "error");
 }
 
 function node(tag, className = "", value = "") {
@@ -52,16 +109,38 @@ function clearReview(message) {
   selectionDraft = null;
   localStorage.removeItem("resumeTailorReviewId");
   localStorage.removeItem("resumeTailorPlanDraft");
-  planPanel.hidden = true;
-  wordingPanel.hidden = true;
+  planButton.textContent = "Suggest resume structure";
+  draftButton.textContent = "Approve structure and suggest wording";
   resetPreview();
   if (message) setStatus(message);
 }
+function resetWorkspace() {
+  resetVersion++;
+  for (const controller of activeRequests) controller.abort();
+  clearReview();
+  parseForm.reset();
+  fillParsedFields({});
+  hasParsedJob = false;
+  parsedSourceText = "";
+  openSuggestionId = null;
+  openGroupKeys = new Set();
+  byId("pending-only").checked = false;
+  replace("review-board", []);
+  replace("review-counts", []);
+  jdInput.disabled = false;
+  parseButton.disabled = false;
+  parseButton.textContent = "Parse job posting";
+  planButton.disabled = false;
+  draftButton.disabled = false;
+  finalizeButton.disabled = false;
+  byId("preview-draft-button").disabled = false;
+  showStep("paste");
+  byId("status").hidden = true;
+  jdInput.focus({ preventScroll: true });
+}
+resetButton.addEventListener("click", resetWorkspace);
 function resetPreview() {
-  previewRequestToken++;
-  preview.src = "/api/master.pdf";
-  pdfLink.href = "/api/master.pdf";
-  byId("preview-caption").textContent = "Showing the master resume. Preview the current draft after reviewing edits.";
+  closePdf();
   details.hidden = true;
 }
 function checkRow(text, checked, onChange) {
@@ -73,18 +152,31 @@ function checkRow(text, checked, onChange) {
   label.append(input, node("span", "", text));
   return label;
 }
+function approvedSelection() {
+  const selection = structuredClone(selectionDraft);
+  selection.project_bullets = Object.fromEntries(
+    selection.project_ids.map((id) => [id, selection.project_bullets[id] || []]),
+  );
+  return selection;
+}
+function canReuseWording() {
+  return review && ["wording", "final"].includes(review.stage) && Array.isArray(review.suggestions)
+    && JSON.stringify(approvedSelection()) === JSON.stringify(review.selection);
+}
+function updateContinueButtons() {
+  planButton.textContent = review ? "Continue to structure" : "Suggest resume structure";
+  draftButton.textContent = canReuseWording() ? "Continue to wording review" : "Approve structure and suggest wording";
+}
 function persistPlanDraft() {
   if (review && selectionDraft) {
     localStorage.setItem("resumeTailorPlanDraft", JSON.stringify({ run_id: review.run_id, selection: selectionDraft }));
   }
+  updateContinueButtons();
 }
 planPanel.addEventListener("change", persistPlanDraft);
 
 function renderPlan() {
   if (!review || !selectionDraft) return;
-  parsedPanel.hidden = false;
-  planPanel.hidden = false;
-  wordingPanel.hidden = true;
   const catalog = review.catalog;
   byId("plan-reason").textContent = typeof selectionDraft.plan_reason === "string"
     ? selectionDraft.plan_reason : "Review the proposed order and selections.";
@@ -170,6 +262,7 @@ function renderPlan() {
     row.querySelector("input").disabled = index === 0;
     return row;
   }));
+  updateContinueButtons();
 }
 
 function groupKey(item) {
@@ -273,8 +366,6 @@ function suggestionRow(item) {
 
 function renderWording() {
   if (!review) return;
-  planPanel.hidden = true;
-  wordingPanel.hidden = false;
   const suggestions = review.suggestions || [];
   const decisions = review.decisions || {};
   const completed = suggestions.filter((item) => decisions[item.id]).length;
@@ -341,7 +432,7 @@ async function saveDecision(id, action, text = "") {
         ?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
     setStatus(remaining.length ? `Decision saved. ${remaining.length} edits remain.` : "All edits reviewed. Preview the draft or build the final PDF.", "success");
-  } catch (error) { setStatus(error.message, "error"); }
+  } catch (error) { showRequestError(error); }
 }
 
 async function reviseCurrent(id, feedback) {
@@ -356,25 +447,24 @@ async function reviseCurrent(id, feedback) {
     openSuggestionId = id;
     renderWording();
     setStatus("New suggestion ready for review.", "success");
-  } catch (error) { setStatus(error.message, "error"); }
+  } catch (error) { showRequestError(error); }
 }
 
 function showFinal(result) {
-  previewRequestToken++;
-  preview.src = result.pdf_url;
-  pdfLink.href = result.pdf_url;
-  byId("preview-caption").textContent = "Final PDF built from your reviewed decisions.";
+  showPdf(result.pdf_url, "Final PDF built from your reviewed decisions.");
   byId("review-note").textContent = result.review_note || "PDF built from your reviewed decisions.";
   byId("summary").textContent = result.summary || "";
   replace("projects", (result.projects || []).map((project) => node("li", "", project.name)));
   replace("warnings", (result.warnings || []).map((warning) => node("p", "", warning)));
   details.hidden = false;
+  showStep("final");
   setStatus("Reviewed PDF ready. Inspect the preview before using it.", "success");
 }
 
 jdInput.addEventListener("input", () => {
-  if (!parsedPanel.hidden) {
-    parsedPanel.hidden = true;
+  if (hasParsedJob) {
+    hasParsedJob = false;
+    parsedSourceText = "";
     clearReview("The pasted text changed. Parse it again before tailoring.");
   }
 });
@@ -387,6 +477,14 @@ parseForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const jd = jdInput.value.trim();
   if (!jd) { setStatus("Paste a job description first.", "error"); return; }
+  if (hasParsedJob && jd === parsedSourceText) {
+    closePdf();
+    showStep("parsed");
+    setStatus("Review the parsed job details before continuing.");
+    return;
+  }
+  hasParsedJob = false;
+  parsedSourceText = "";
   clearReview();
   parseButton.disabled = true;
   jdInput.disabled = true;
@@ -395,17 +493,31 @@ parseForm.addEventListener("submit", async (event) => {
   try {
     const result = await postJson("/api/parse", { jd });
     fillParsedFields(result.parsed_jd);
-    parsedPanel.hidden = false;
-    parsedPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    hasParsedJob = true;
+    parsedSourceText = jd;
+    showStep("parsed");
     setStatus("Review the cleaned JD, then ask for a structure plan.", "success");
-  } catch (error) { setStatus(error.message, "error"); }
+  } catch (error) { showRequestError(error); }
   finally {
     jdInput.disabled = false;
     parseButton.disabled = false;
-    parseButton.textContent = "Parse job posting";
+    parseButton.textContent = hasParsedJob ? "Continue to parsed job" : "Parse job posting";
   }
 });
+byId("back-to-jd").addEventListener("click", () => {
+  parseButton.textContent = hasParsedJob ? "Continue to parsed job" : "Parse job posting";
+  closePdf();
+  showStep("paste");
+  setStatus("Your job posting is preserved. Edit it and parse again if needed.");
+});
 planButton.addEventListener("click", async () => {
+  if (review && selectionDraft) {
+    renderPlan();
+    closePdf();
+    showStep("plan");
+    setStatus("Review the structure before continuing.");
+    return;
+  }
   planButton.disabled = true;
   setStatus("Choosing section order, five projects, and supporting master content. This AI step can take several minutes…");
   try {
@@ -413,29 +525,39 @@ planButton.addEventListener("click", async () => {
     selectionDraft = structuredClone(review.selection);
     localStorage.setItem("resumeTailorReviewId", review.run_id);
     renderPlan();
-    planPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    showStep("plan");
     setStatus("Review the structure. Change the order or selections before approving.", "success");
-  } catch (error) { setStatus(error.message, "error"); }
+  } catch (error) { showRequestError(error); }
   finally { planButton.disabled = false; }
 });
+byId("back-to-parsed").addEventListener("click", () => {
+  updateContinueButtons();
+  closePdf();
+  showStep("parsed");
+  setStatus("Review the extracted job details. Your structure choices are preserved.");
+});
 draftButton.addEventListener("click", async () => {
+  if (canReuseWording()) {
+    renderWording();
+    closePdf();
+    showStep("wording");
+    setStatus("Continue reviewing your saved wording decisions.");
+    return;
+  }
   draftButton.disabled = true;
   setStatus("Drafting source-linked wording suggestions for your approved structure…");
   try {
-    const approvedSelection = structuredClone(selectionDraft);
-    approvedSelection.project_bullets = Object.fromEntries(
-      approvedSelection.project_ids.map((id) => [id, approvedSelection.project_bullets[id] || []]),
-    );
-    review = await postJson("/api/draft", { run_id: review.run_id, selection: approvedSelection });
+    review = await postJson("/api/draft", { run_id: review.run_id, selection: approvedSelection() });
+    selectionDraft = structuredClone(review.selection);
     localStorage.removeItem("resumeTailorPlanDraft");
     resetPreview();
     openSuggestionId = review.suggestions[0]?.id || null;
     openGroupKeys = new Set(review.suggestions[0] ? [groupKey(review.suggestions[0])] : []);
     byId("pending-only").checked = false;
     renderWording();
-    wordingPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    showStep("wording");
     setStatus(`Review ${review.suggestions.length} wording suggestions by resume entry.`, "success");
-  } catch (error) { setStatus(error.message, "error"); }
+  } catch (error) { showRequestError(error); }
   finally { draftButton.disabled = false; }
 });
 byId("pending-only").addEventListener("change", renderWording);
@@ -446,24 +568,35 @@ byId("preview-draft-button").addEventListener("click", async () => {
   setStatus("Building a draft PDF from your current decisions…");
   try {
     const result = await postJson("/api/preview", { run_id: review.run_id });
-    if (requestToken !== previewRequestToken) {
-      setStatus("The review changed while the draft PDF was building. Preview again to see the latest decisions.");
-      return;
-    }
+    if (requestToken !== previewRequestToken) return;
     const url = `${result.pdf_url}?v=${Date.now()}`;
-    preview.src = url;
-    pdfLink.href = url;
-    byId("preview-caption").textContent = result.pending
+    const caption = result.pending
       ? `Draft PDF · ${result.pending} pending edit${result.pending === 1 ? "" : "s"} still use master wording.`
       : "Draft PDF · all proposed edits have been reviewed.";
+    showPdf(url, caption);
     setStatus(result.warnings?.length ? `Draft PDF ready. ${result.warnings.join(" ")}` : "Draft PDF ready for review.", "success");
-  } catch (error) { setStatus(error.message, "error"); }
+  } catch (error) { showRequestError(error); }
   finally { button.disabled = false; }
 });
 byId("back-to-plan").addEventListener("click", () => {
   renderPlan();
-  planPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  closePdf();
+  showStep("plan");
+  setStatus("Your wording decisions are preserved while you review the structure.");
 });
+byId("back-to-wording").addEventListener("click", () => {
+  renderWording();
+  closePdf();
+  showStep("wording");
+  setStatus("Your finished PDF and wording decisions are preserved.");
+});
+byId("view-final-pdf").addEventListener("click", () => {
+  if (review?.pdf_url) showPdf(review.pdf_url, "Final PDF built from your reviewed decisions.");
+});
+byId("master-preview-button").addEventListener("click", () => {
+  showPdf("/api/master.pdf", "Master resume for reference.");
+});
+byId("close-preview").addEventListener("click", closePdf);
 finalizeButton.addEventListener("click", async () => {
   finalizeButton.disabled = true;
   setStatus("Building the PDF from your decisions and checking its layout…");
@@ -473,31 +606,43 @@ finalizeButton.addEventListener("click", async () => {
     review.pdf_url = result.pdf_url;
     review.warnings = result.warnings;
     showFinal(result);
-  } catch (error) { setStatus(error.message, "error"); }
+  } catch (error) { showRequestError(error); }
   finally { finalizeButton.disabled = false; }
 });
 async function restoreReview() {
   const runId = localStorage.getItem("resumeTailorReviewId");
   if (!runId) return;
+  const version = resetVersion;
   try {
     const response = await fetch(`/api/review/${encodeURIComponent(runId)}`);
+    if (version !== resetVersion) return;
     if (!response.ok) throw new Error("Saved review unavailable.");
-    review = await response.json();
+    const restored = await response.json();
+    if (version !== resetVersion) return;
+    review = restored;
     selectionDraft = structuredClone(review.selection);
+    hasParsedJob = true;
+    jdInput.value = review.parsed_jd.jd_text;
+    parsedSourceText = jdInput.value.trim();
+    parseButton.textContent = "Continue to parsed job";
     if (review.stage === "plan") {
       const saved = JSON.parse(localStorage.getItem("resumeTailorPlanDraft") || "null");
       if (saved?.run_id === review.run_id && saved.selection) selectionDraft = saved.selection;
     }
     fillParsedFields(review.parsed_jd);
-    parsedPanel.hidden = false;
-    if (review.stage === "plan") renderPlan();
+    if (review.stage === "plan") {
+      renderPlan();
+      showStep("plan", false);
+    }
     if (review.stage === "wording") {
       openSuggestionId = review.suggestions.find((item) => !review.decisions[item.id])?.id || review.suggestions[0]?.id || null;
       openGroupKeys = new Set(openSuggestionId ? [groupKey(review.suggestions.find((item) => item.id === openSuggestionId))] : []);
       renderWording();
+      showStep("wording", false);
     }
     if (review.stage === "final" && review.pdf_url) showFinal(review);
     setStatus("Saved review restored. Continue where you left off.", "success");
-  } catch (_) { localStorage.removeItem("resumeTailorReviewId"); }
+  } catch (_) { if (version === resetVersion) localStorage.removeItem("resumeTailorReviewId"); }
 }
+showStep("paste", false);
 restoreReview();

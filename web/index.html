@@ -14,26 +14,36 @@
         <h1>Resume Tailor</h1>
         <p class="subtitle">Review the JD, approve the structure and wording, then preview your PDF.</p>
       </div>
-      <span class="badge">Master layout · exactly 5 projects</span>
+      <div class="header-actions">
+        <button id="master-preview-button" type="button" class="master-link">View master PDF</button>
+        <button id="reset-button" type="button" class="reset-button">New JD</button>
+      </div>
     </header>
 
     <main class="layout">
-      <section class="panel editor" aria-labelledby="jd-title">
-        <div class="panel-heading">
-          <div>
-            <p class="step">01 / JOB DESCRIPTION</p>
-            <h2 id="jd-title">What role are you applying for?</h2>
-          </div>
+      <section class="panel editor" aria-label="Resume tailoring wizard">
+        <div class="wizard-progress" aria-label="Resume tailoring progress">
+          <span id="wizard-progress-label">Step 1 of 5 · Job description</span>
+          <div class="wizard-progress-track"><span id="wizard-progress-fill"></span></div>
         </div>
-        <form id="parse-form">
-          <label for="jd">Paste the full job description</label>
-          <textarea id="jd" name="jd" placeholder="Paste the role description, requirements, and responsibilities here…" spellcheck="true" required></textarea>
-          <div class="form-footer">
-            <span>Your master resume stays unchanged.</span>
-            <button id="parse-button" type="submit">Parse job posting</button>
+        <section id="paste-panel" class="wizard-screen" aria-labelledby="jd-title">
+          <div class="panel-heading">
+            <div>
+              <p class="step">01 / JOB DESCRIPTION</p>
+              <h2 id="jd-title">What role are you applying for?</h2>
+            </div>
           </div>
-        </form>
-        <section id="parsed-panel" class="parsed-panel" aria-labelledby="parsed-title" hidden>
+          <form id="parse-form">
+            <label for="jd">Paste the full job description</label>
+            <textarea id="jd" name="jd" placeholder="Paste the role description, requirements, and responsibilities here…" spellcheck="true" required></textarea>
+            <div class="form-footer">
+              <span>Your master resume stays unchanged.</span>
+              <button id="parse-button" type="submit">Parse job posting</button>
+            </div>
+          </form>
+        </section>
+        <section id="parsed-panel" class="wizard-screen" aria-labelledby="parsed-title" hidden>
+          <button id="back-to-jd" type="button" class="back-link">← Back to job posting</button>
           <p class="step">02 / REVIEW EXTRACTED JOB</p>
           <h2 id="parsed-title">Check the company, role, and job description</h2>
           <p class="hint">Review the cleaned posting and edit anything the parser missed before generating.</p>
@@ -45,7 +55,8 @@
           <textarea id="jd_text" class="cleaned-jd-field" maxlength="30000" spellcheck="true"></textarea>
           <button id="plan-button" type="button">Suggest resume structure</button>
         </section>
-        <section id="plan-panel" class="review-panel" aria-labelledby="plan-title" hidden>
+        <section id="plan-panel" class="wizard-screen" aria-labelledby="plan-title" hidden>
+          <button id="back-to-parsed" type="button" class="back-link">← Back to parsed job</button>
           <p class="step">03 / REVIEW STRUCTURE</p>
           <h2 id="plan-title">Choose what the resume emphasizes</h2>
           <p id="plan-reason" class="hint"></p>
@@ -65,7 +76,8 @@
           <div id="summary-sentences" class="review-stack"></div>
           <button id="draft-button" type="button">Approve structure and suggest wording</button>
         </section>
-        <section id="wording-panel" class="review-panel" aria-labelledby="wording-title" hidden>
+        <section id="wording-panel" class="wizard-screen" aria-labelledby="wording-title" hidden>
+          <button id="back-to-plan" type="button" class="back-link">← Back to structure</button>
           <p class="step">04 / REVIEW WORDING</p>
           <h2 id="wording-title">Review proposed edits</h2>
           <p class="hint">Review changes by resume entry. Open any edit to compare it with the master and see its supporting evidence.</p>
@@ -76,31 +88,39 @@
           </div>
           <div id="review-board" class="review-board"></div>
           <button id="preview-draft-button" type="button" class="secondary-button">Preview current draft PDF</button>
-          <button id="back-to-plan" type="button" class="text-button">Change structure plan</button>
           <button id="finalize-button" type="button">Build reviewed PDF</button>
         </section>
-        <div id="status" class="status" role="status" aria-live="polite">Ready. The preview currently shows your master resume.</div>
-        <div id="details" class="details" hidden>
-          <p class="step">TAILORED CONTENT</p>
-          <p id="review-note" class="review-note"></p>
-          <h3>Selected projects</h3>
-          <ol id="projects"></ol>
-          <h3>Selected summary</h3>
-          <p id="summary" class="summary"></p>
-          <div id="warnings"></div>
-        </div>
+        <section id="final-panel" class="wizard-screen" aria-labelledby="final-title" hidden>
+          <button id="back-to-wording" type="button" class="back-link">← Back to wording review</button>
+          <p class="step">05 / FINISHED RESUME</p>
+          <h2 id="final-title">Review your tailored PDF</h2>
+          <p class="hint">Check the finished document before using it. You can return to your wording decisions.</p>
+          <button id="view-final-pdf" type="button" class="secondary-button final-pdf-button">View finished PDF</button>
+          <div id="details" class="details" hidden>
+            <p id="review-note" class="review-note"></p>
+            <h3>Selected projects</h3>
+            <ol id="projects"></ol>
+            <h3>Selected summary</h3>
+            <p id="summary" class="summary"></p>
+            <div id="warnings"></div>
+          </div>
+        </section>
+        <div id="status" class="status" role="status" aria-live="polite" hidden></div>
       </section>
 
-      <section class="panel preview" aria-labelledby="preview-title">
+      <section id="preview-panel" class="panel preview" aria-labelledby="preview-title" hidden>
         <div class="preview-heading">
           <div>
-            <p class="step">05 / PDF PREVIEW</p>
+            <p class="step">DOCUMENT PREVIEW</p>
             <h2 id="preview-title">Resume PDF</h2>
-            <p id="preview-caption" class="hint">Showing the master resume.</p>
+            <p id="preview-caption" class="hint"></p>
           </div>
-          <a id="pdf-link" href="/api/master.pdf" target="_blank" rel="noopener">Open PDF ↗</a>
+          <div class="preview-actions">
+            <a id="pdf-link" href="#" target="_blank" rel="noopener">Open PDF ↗</a>
+            <button id="close-preview" type="button" class="preview-close">Close</button>
+          </div>
         </div>
-        <iframe id="pdf-preview" title="Resume PDF preview" src="/api/master.pdf"></iframe>
+        <iframe id="pdf-preview" title="Resume PDF preview" src="about:blank"></iframe>
       </section>
     </main>
   </body>
