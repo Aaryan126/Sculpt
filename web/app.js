@@ -616,7 +616,13 @@ async function restoreReview() {
   try {
     const response = await fetch(`/api/review/${encodeURIComponent(runId)}`);
     if (version !== resetVersion) return;
-    if (!response.ok) throw new Error("Saved review unavailable.");
+    if (response.status === 404) {
+      localStorage.removeItem("resumeTailorReviewId");
+      localStorage.removeItem("resumeTailorPlanDraft");
+      setStatus("The saved review is no longer on the server. Start a new job description; free hosting may clear reviews when it sleeps.", "error");
+      return;
+    }
+    if (!response.ok) throw new Error("Saved review unavailable. Refresh to try again.");
     const restored = await response.json();
     if (version !== resetVersion) return;
     review = restored;
@@ -642,7 +648,7 @@ async function restoreReview() {
     }
     if (review.stage === "final" && review.pdf_url) showFinal(review);
     setStatus("Saved review restored. Continue where you left off.", "success");
-  } catch (_) { if (version === resetVersion) localStorage.removeItem("resumeTailorReviewId"); }
+  } catch (error) { if (version === resetVersion) setStatus(error.message, "error"); }
 }
 showStep("paste", false);
 restoreReview();

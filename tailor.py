@@ -192,7 +192,7 @@ def _request_json(messages, operation="AI request"):
     api_key = env.get("SOCLAAS_API_KEY", "").strip()
     model = env.get("SOCLAAS_MODEL", "").strip()
     if not base_url or not model or not api_key or api_key in {"apikey", "paste-your-key-here"}:
-        raise TailorError("Add your real SOCLAAS_API_KEY to .env, then generate again.")
+        raise TailorError("Configure SOCLAAS_API_KEY on the server, then try again.")
     if not base_url.startswith("https://"):
         raise TailorError("SOCLAAS_BASE_URL must start with https://.")
     configured_timeout = env.get("SOCLAAS_TIMEOUT_SECONDS", "").strip() or "300"

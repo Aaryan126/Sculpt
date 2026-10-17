@@ -104,3 +104,20 @@ python web_server.py
 The web UI is a five-step wizard: paste a JD, review the three parsed fields, approve the structure, review wording, and inspect the final PDF. Each step replaces the previous screen and has a Back control. The master PDF stays hidden until **View master PDF** is selected. Returning to unchanged parsed or structure steps reuses the existing result without another AI call. The wording board groups proposed edits by work entry or project, shows changed words and source evidence, and tracks pending and completed decisions. For each edit choose **Accept**, **Keep master wording**, **Use my edit**, or **Suggest another version**. **Preview current draft PDF** builds from current decisions while pending suggestions retain master wording; the final PDF requires a decision on every suggestion. **New JD** clears the current browser workflow and returns to the empty posting form. The app saves the draft and decisions locally per run so a refresh can resume review. Review the final PDF before using it.
 
 Each run saves review state at `output/tailored/<run-id>/review.json`. Once built, it also saves `content/tailored/<run-id>.yaml`, `output/tailored/<run-id>/parsed_jd.json`, and `output/tailored/<run-id>/resume.pdf`. Both directories and `.env` are ignored by Git. The API key stays on the Python server and is never sent to the browser. Python loads the macOS system certificate bundle for SoCLaaS while keeping TLS verification enabled. The CLI `--jd` flag is still not implemented; the web UI provides the JD workflow.
+
+## Render deployment
+
+The frontend, Python API, and PDF builder deploy together as one **free Render web service**. `Dockerfile` installs LaTeX and Poppler, builds the master PDF, and starts the same web server used locally. `render.yaml` defines the service and prompts for the two secrets. No Vercel or Netlify project is needed.
+
+After these files are pushed to GitHub, use [Deploy to Render](https://render.com/deploy?repo=https://github.com/Aaryan126/Sculpt) or follow the steps below.
+
+1. Push this project to a GitHub repository you control. Keep the repository private if you do not want your master resume and contact details public. `.env` is ignored by Git and excluded from the Docker build context; never commit it.
+2. In Render, choose **New → Blueprint**, connect the repository, and select `render.yaml`.
+3. When prompted, enter `SOCLAAS_API_KEY` and a unique `RESUME_ACCESS_PASSWORD` of at least 20 characters. Render stores them as service environment variables. The login username is `resume`. You can generate a password locally with `openssl rand -base64 32` and save it in your password manager.
+4. Approve the Blueprint deployment. Open the resulting `https://...onrender.com` URL and sign in using the browser prompt. The password gate covers the UI, API, master PDF, saved reviews, and generated PDFs. Render terminates HTTPS before forwarding requests to the app.
+
+The server listens on Render's `PORT` and refuses to bind to a non-local address without the access password. The `SOCLAAS_BASE_URL` and model are set in `render.yaml`; the API key is supplied only in Render. The Blueprint disables automatic redeploys; deploy manually from Render after future code changes.
+
+**Free-tier limits:** Render sleeps the service after 15 minutes without an incoming request and may restart it. Its free filesystem is temporary, so unfinished reviews, tailored YAML, and generated PDFs disappear on sleep, restart, or redeploy. Finish a review and download its PDF before leaving. A later version can add persistent storage if needed. Initial startup after sleep can take around a minute. The free instance has 512 MB RAM; the Docker build and PDF generation need to complete within that limit. SoCLaaS also needs to accept requests from Render's network, which can only be confirmed after deployment.
+
+For local use, continue running `python web_server.py`; the browser password prompt is enabled only when `RESUME_ACCESS_PASSWORD` is set. If you manually bind the server to a non-local address, it requires a password of at least 20 characters.

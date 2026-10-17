@@ -2,8 +2,11 @@
 """Small local UI for JD-based resume generation and PDF preview."""
 
 import argparse
+import base64
+import binascii
 from datetime import datetime, timezone
 import hashlib
+import hmac
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
@@ -81,12 +84,42 @@ def public_draft(draft, master):
 
 
 class Handler(BaseHTTPRequestHandler):
+    def _authorized(self):
+        password = os.environ.get("RESUME_ACCESS_PASSWORD", "")
+        if not password:
+            return True
+        authorization = self.headers.get("Authorization", "")
+        if authorization.startswith("Basic "):
+            try:
+                credentials = base64.b64decode(authorization[6:], validate=True).decode("utf-8")
+                username, supplied_password = credentials.split(":", 1)
+                expected_username = os.environ.get("RESUME_ACCESS_USERNAME", "resume")
+                if (hmac.compare_digest(username, expected_username)
+                        and hmac.compare_digest(supplied_password, password)):
+                    return True
+            except (binascii.Error, UnicodeDecodeError, ValueError):
+                pass
+        body = b"Authentication required."
+        self.send_response(401)
+        self.send_header("WWW-Authenticate", 'Basic realm="Resume Tailor", charset="UTF-8"')
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "SAMEORIGIN")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.end_headers()
+        self.wfile.write(body)
+        return False
+
     def _send(self, status, data, content_type, cache="no-store"):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", cache)
         self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "SAMEORIGIN")
+        self.send_header("Referrer-Policy", "no-referrer")
         self.end_headers()
         self.wfile.write(data)
 
@@ -94,6 +127,8 @@ class Handler(BaseHTTPRequestHandler):
         self._send(status, json.dumps(value, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8")
 
     def do_GET(self):
+        if not self._authorized():
+            return
         request_path = urlsplit(self.path).path
         assets = {
             "/": (WEB_DIR / "index.html", "text/html; charset=utf-8"),
@@ -129,8 +164,13 @@ class Handler(BaseHTTPRequestHandler):
         self._json(404, {"error": "Not found."})
 
     def do_POST(self):
+        if not self._authorized():
+            return
         if self.path not in {"/api/parse", "/api/plan", "/api/draft", "/api/decision", "/api/revise", "/api/preview", "/api/finalize"}:
             self._json(404, {"error": "Not found."})
+            return
+        if self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower() != "application/json":
+            self._json(415, {"error": "Send JSON requests with Content-Type: application/json."})
             return
         try:
             length = int(self.headers.get("Content-Length", "0"))
@@ -310,11 +350,16 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run the local resume tailoring UI")
-    parser.add_argument("--port", type=int, default=8000)
+    parser = argparse.ArgumentParser(description="Run the resume tailoring UI")
+    parser.add_argument("--host", default="0.0.0.0" if os.environ.get("PORT") else "127.0.0.1")
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8000")))
     args = parser.parse_args()
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
-    print(f"Resume Tailor: http://127.0.0.1:{args.port}")
+    if args.host not in {"127.0.0.1", "localhost", "::1"}:
+        password = os.environ.get("RESUME_ACCESS_PASSWORD", "")
+        if len(password) < 20:
+            parser.error("A public binding requires RESUME_ACCESS_PASSWORD with at least 20 characters.")
+    server = ThreadingHTTPServer((args.host, args.port), Handler)
+    print(f"Resume Tailor listening on {args.host}:{args.port}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
