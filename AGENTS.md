@@ -183,6 +183,15 @@ Template uses:
 10. **Do not silently drop content or shrink text to meet limits** — report the exact offending entry and text
 11. **Tailored resumes select exactly 5 known master project IDs**; the master has no project count cap. Do not overwrite the master PDF during tailoring.
 
+## Git and Deployment Permissions
+
+- Before a task that requires a commit, push, or local Git reset, check the current session's filesystem permissions and `git status`. Do not assume that write access to the project also includes `.git`.
+- If local Git writes are permitted, handle staging, committing, pushing, and syncing yourself when the user has authorized that work. Do not hand routine Git commands to the user.
+- If `.git` is read-only, report the exact failed operation and permission error. Request elevated access only when the session supports it; a user's approval in chat does not override an enforced sandbox denial.
+- When local Git writes are blocked, use an authorized GitHub API or other available publishing path where practical, then explain any remaining local sync step. Never claim that Git is unavailable without checking the specific operation.
+- On 2026-10-17, this session allowed project file edits but blocked local Git index writes: `git update-index --refresh` failed while creating `.git/index.lock` with `Operation not permitted`. An elevated `git add` request was automatically rejected because sandbox approval was disabled. The fix was published through the GitHub API, and the user synced the local checkout afterward. Recheck permissions in future sessions; this may change.
+- On 2026-10-18, enabling approval requests resolved the blocker: `git add AGENTS.md` succeeded with `sandbox_permissions: "require_escalated"`. Use this supported approval flow for authorized Git operations when available; the sandbox may still protect `.git` during ordinary commands. Do not assume the earlier denial still applies.
+
 ## Current State (Checkpoint)
 
 - Baseline PDF builds: 2 pages; all hard checks PASS. One 2.154pt overfull line is reported as an allowed warning under the 3pt threshold.
