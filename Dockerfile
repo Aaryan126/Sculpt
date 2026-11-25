@@ -16,7 +16,7 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY build.py pdf_checks.py tailor.py review_flow.py web_server.py ./
+COPY build.py pdf_checks.py tailor.py review_flow.py knowledge.py guided_tailoring.py staged_generation.py guided_service.py web_server.py ./
 COPY config/ ./config/
 COPY content/master.yaml ./content/master.yaml
 COPY templates/ ./templates/

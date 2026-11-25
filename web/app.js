@@ -1,654 +1,337 @@
-const byId = (id) => document.getElementById(id);
-const parseForm = byId("parse-form");
-const parseButton = byId("parse-button");
-const resetButton = byId("reset-button");
-const planButton = byId("plan-button");
-const draftButton = byId("draft-button");
-const finalizeButton = byId("finalize-button");
-const jdInput = byId("jd");
-const pastePanel = byId("paste-panel");
-const parsedPanel = byId("parsed-panel");
-const planPanel = byId("plan-panel");
-const wordingPanel = byId("wording-panel");
-const finalPanel = byId("final-panel");
-const previewPanel = byId("preview-panel");
-const layout = document.querySelector(".layout");
-const details = byId("details");
-const preview = byId("pdf-preview");
-const pdfLink = byId("pdf-link");
-const reviewFields = ["company", "role", "jd_text"];
-const sectionLabels = { experience: "Work Experience", education: "Education", projects: "Academic Projects", skills: "Skills" };
-let review = null;
-let selectionDraft = null;
-let openSuggestionId = null;
-let openGroupKeys = new Set();
-let previewRequestToken = 0;
-const activeRequests = new Set();
-let resetVersion = 0;
-let hasParsedJob = false;
-let parsedSourceText = "";
-
-const stepDetails = {
-  paste: [1, "Job description"],
-  parsed: [2, "Review parsed job"],
-  plan: [3, "Review structure"],
-  wording: [4, "Review wording"],
-  final: [5, "Finished resume"],
+const $ = (id) => document.getElementById(id);
+const node = (tag, className = '', text = '') => {
+  const el = document.createElement(tag); el.className = className; el.textContent = text; return el;
 };
-
-function showStep(step, scroll = true) {
-  for (const [name, panel] of Object.entries({ paste: pastePanel, parsed: parsedPanel, plan: planPanel, wording: wordingPanel, final: finalPanel })) {
-    panel.hidden = name !== step;
-  }
-  const [number, label] = stepDetails[step];
-  byId("wizard-progress-label").textContent = `Step ${number} of 5 · ${label}`;
-  byId("wizard-progress-fill").style.width = `${number * 20}%`;
-  if (scroll) window.scrollTo({ top: 0, behavior: "smooth" });
+const steps = {paste:[1,'Job description'], parsed:[2,'Job details'], questions:[3,'Useful questions'], review:[4,'Review resume'], final:[5,'Finished resume']};
+let run = null, step = 'paste', busy = false, pollTimer, epoch = 0;
+let knowledge = null, editingKnowledge = null, openChange = null;
+const storage = {
+  get(key) { try { return localStorage.getItem(key); } catch { return null; } },
+  set(key, value) { try { localStorage.setItem(key, value); } catch {} },
+  remove(key) { try { localStorage.removeItem(key); } catch {} },
+};
+const scrollBehavior = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth';
+function status(text, error = false) {
+  $('status').textContent = text; $('status').className = `status${error ? ' error' : ''}`; $('status').hidden = !text;
 }
-
+function setBusy(value) {
+  busy = value; document.body.classList.toggle('is-busy', value);
+  document.querySelectorAll('.wizard-screen').forEach(el => { el.inert = value && !(el.id === 'review-panel' && run?.draft); });
+  document.querySelector('.editor').setAttribute('aria-busy', String(value));
+}
+function showStep(name, focus = true) {
+  step = name; document.querySelector('.layout').dataset.step = name;
+  for (const key of Object.keys(steps)) $(key === 'parsed' ? 'parsed-panel' : `${key}-panel`).hidden = name !== key;
+  $('wizard-progress-label').textContent = `Step ${steps[name][0]} of 5 · ${steps[name][1]}`;
+  $('wizard-progress-fill').style.width = `${steps[name][0] * 20}%`;
+  $('job-context').hidden = ['paste','parsed'].includes(name);
+  $('job-context-title').textContent = run ? [run.parsed_jd.role, run.parsed_jd.company].filter(Boolean).join(' at ') : '';
+  if (focus) { const h = document.querySelector('.wizard-screen:not([hidden]) h2'); h.tabIndex = -1; h.focus({preventScroll:true}); window.scrollTo({top:0,behavior:scrollBehavior()}); }
+}
+async function request(path, body) {
+  const response = await fetch(path, body === undefined ? {} : {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  let data; try { data = await response.json(); } catch { throw new Error('The server returned an unreadable response. Retry after checking the connection.'); }
+  if (!response.ok) throw new Error(data.error || 'Request failed.'); return data;
+}
+async function action(path, payload = {}, message = '') {
+  const version = epoch; setBusy(true); status(message); $('task-actions').hidden = true;
+  try {
+    const result = await request(path, {...(run ? {run_id:run.run_id, revision:run.revision} : {}),...payload});
+    if (version !== epoch) return;
+    if (result.run_id) receive(result); return result;
+  } catch (error) { if (version === epoch) status(error.message,true); }
+  finally { if (version === epoch && run?.task?.state !== 'running') setBusy(false); }
+}
+function receive(result, focus = true) {
+  const previousStep = step;
+  run = result; storage.set('sculptGuidedRunId', run.run_id);
+  fillJob(run.parsed_jd);
+  const running = run.task?.state === 'running';
+  setBusy(running);
+  if (run.draft) renderReview();
+  else renderQuestions();
+  const target = run.stage === 'final' ? 'final' : run.draft ? 'review' : 'questions';
+  showStep(target, focus && previousStep !== target);
+  if (run.stage === 'final') {
+    $('download-final-pdf').href = run.final_url;
+    $('warnings').replaceChildren(...(run.warnings || []).map(w => node('p','',w)));
+    if (previousStep !== 'final') showPdf(run.final_url,'Reviewed final PDF');
+  }
+  $('task-actions').hidden = running || run.task?.state !== 'error';
+  $('retry-button').textContent = run.task?.operation === 'draft' ? 'Resume draft' : run.task?.operation === 'check' ? 'Resume evidence check' : 'Retry task';
+  status(running ? run.task.message : run.error || '', Boolean(run.error));
+  clearTimeout(pollTimer);
+  if (running) pollTimer = setTimeout(poll, 1500);
+}
+async function poll() {
+  const version = epoch;
+  try { const next = await request(`/api/guided/run/${run.run_id}`); if (version === epoch) receive(next,false); }
+  catch (error) { if (version === epoch) { status(`${error.message} Reconnecting…`,true); pollTimer=setTimeout(poll,3500); } }
+}
+function fillJob(data) { for (const key of ['company','role','jd_text']) $(key).value=data[key] || ''; }
+function jobFields() { return Object.fromEntries(['company','role','jd_text'].map(key=>[key,$(key).value.trim()])); }
 function showPdf(url, caption) {
-  previewRequestToken++;
-  preview.src = url;
-  pdfLink.href = url;
-  byId("preview-caption").textContent = caption;
-  previewPanel.hidden = false;
-  layout.classList.add("has-preview");
+  if (!url) return;
+  $('pdf-preview').src=url; $('pdf-link').href=url; $('preview-caption').textContent=caption;
+  $('preview-panel').hidden=false; document.querySelector('.layout').classList.add('has-preview');
+  $('master-preview-button').setAttribute('aria-expanded','true');
+  if (matchMedia('(max-width:1200px)').matches) $('preview-panel').scrollIntoView({behavior:scrollBehavior()});
 }
-
-function closePdf() {
-  previewRequestToken++;
-  previewPanel.hidden = true;
-  layout.classList.remove("has-preview");
-  preview.src = "about:blank";
-  pdfLink.removeAttribute("href");
-}
-
-function setStatus(message, kind = "") {
-  byId("status").textContent = message;
-  byId("status").className = `status ${kind}`.trim();
-  byId("status").hidden = false;
-}
-
-async function postJson(url, body) {
-  const controller = new AbortController();
-  activeRequests.add(controller);
-  try {
-    const response = await fetch(url, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body), signal: controller.signal,
-    });
-    const result = await response.json();
-    if (controller.signal.aborted) throw new DOMException("Request cancelled", "AbortError");
-    if (!response.ok) throw new Error([result.error, result.details].filter(Boolean).join("\n\n"));
-    return result;
-  } finally {
-    activeRequests.delete(controller);
+function closePdf() { $('preview-panel').hidden=true; $('pdf-preview').src='about:blank'; document.querySelector('.layout').classList.remove('has-preview'); $('master-preview-button').setAttribute('aria-expanded','false'); }
+$('master-preview-button').onclick=()=>showPdf('/api/master.pdf','Master resume');
+$('close-preview').onclick=closePdf;
+$('view-final-pdf').onclick=()=>showPdf(run.final_url,'Reviewed final PDF');
+$('proposal-preview').onclick=()=>showPdf(run.proposal_url,'Proposal PDF · includes unreviewed suggestions');
+$('back-to-review').onclick=()=>{ closePdf(); showStep('review'); };
+$('back-to-jd').onclick=()=>{ closePdf(); showStep('paste'); };
+$('back-to-parsed').onclick=()=>{ closePdf(); showStep('parsed'); };
+$('jd').addEventListener('input',()=>{ $('jd-count').textContent=`${$('jd').value.length.toLocaleString()} / 30,000`; storage.set('sculptPastedJob',$('jd').value); });
+$('parse-form').addEventListener('submit',async event=>{
+  event.preventDefault(); if (busy) return;
+  const result=await action('/api/parse',{jd:$('jd').value},'Reading the job posting…');
+  if (result) { fillJob(result.parsed_jd); showStep('parsed'); status(''); }
+});
+$('plan-button').onclick=async()=>{
+  if (busy) return;
+  const fields=jobFields();
+  if (run?.analysis && JSON.stringify(fields)===JSON.stringify(run.parsed_jd)) { showStep(run.draft?'review':'questions'); return; }
+  await action('/api/guided/start',{parsed_jd:fields},'Checking the role against your resume and saved knowledge…');
+};
+function renderAnalysis(target, coverage=false) {
+  const container=$(target); container.replaceChildren();
+  if (!run.analysis) return;
+  container.append(node('p','hint',run.analysis.strategy));
+  for (const req of run.analysis.requirements) {
+    const item=node('details','requirement');
+    const covered=Object.entries(run.draft?.fields || {}).filter(([,f])=>f.requirement_ids.includes(req.id)).length;
+    item.append(node('summary','',`${req.priority} · ${coverage ? (covered ? `${covered} proposed passages` : 'Not addressed in draft') : req.status} — ${req.label || req.quote}`));
+    item.append(node('p','hint',`JD: ${req.quote}`));
+    item.append(node('p','hint',req.reason));
+    if (req.source_ids.length) item.append(node('p','hint',`Evidence: ${req.source_ids.join(', ')}`));
+    container.append(item);
   }
 }
-
-function showRequestError(error) {
-  if (error.name !== "AbortError") setStatus(error.message, "error");
-}
-
-function node(tag, className = "", value = "") {
-  const element = document.createElement(tag);
-  if (className) element.className = className;
-  if (value) element.textContent = value;
-  return element;
-}
-
-function replace(id, children) { byId(id).replaceChildren(...children); }
-function fillParsedFields(parsed) {
-  for (const field of reviewFields) byId(field).value = parsed[field] || "";
-}
-function reviewedFields() {
-  return Object.fromEntries(reviewFields.map((field) => [field, byId(field).value.trim()]));
-}
-function clearReview(message) {
-  review = null;
-  selectionDraft = null;
-  localStorage.removeItem("resumeTailorReviewId");
-  localStorage.removeItem("resumeTailorPlanDraft");
-  planButton.textContent = "Suggest resume structure";
-  draftButton.textContent = "Approve structure and suggest wording";
-  resetPreview();
-  if (message) setStatus(message);
-}
-function resetWorkspace() {
-  resetVersion++;
-  for (const controller of activeRequests) controller.abort();
-  clearReview();
-  parseForm.reset();
-  fillParsedFields({});
-  hasParsedJob = false;
-  parsedSourceText = "";
-  openSuggestionId = null;
-  openGroupKeys = new Set();
-  byId("pending-only").checked = false;
-  replace("review-board", []);
-  replace("review-counts", []);
-  jdInput.disabled = false;
-  parseButton.disabled = false;
-  parseButton.textContent = "Parse job posting";
-  planButton.disabled = false;
-  draftButton.disabled = false;
-  finalizeButton.disabled = false;
-  byId("preview-draft-button").disabled = false;
-  showStep("paste");
-  byId("status").hidden = true;
-  jdInput.focus({ preventScroll: true });
-}
-resetButton.addEventListener("click", resetWorkspace);
-function resetPreview() {
-  closePdf();
-  details.hidden = true;
-}
-function checkRow(text, checked, onChange) {
-  const label = node("label", "check-row");
-  const input = document.createElement("input");
-  input.type = "checkbox";
-  input.checked = checked;
-  input.addEventListener("change", () => onChange(input.checked));
-  label.append(input, node("span", "", text));
-  return label;
-}
-function approvedSelection() {
-  const selection = structuredClone(selectionDraft);
-  selection.project_bullets = Object.fromEntries(
-    selection.project_ids.map((id) => [id, selection.project_bullets[id] || []]),
-  );
-  return selection;
-}
-function canReuseWording() {
-  return review && ["wording", "final"].includes(review.stage) && Array.isArray(review.suggestions)
-    && JSON.stringify(approvedSelection()) === JSON.stringify(review.selection);
-}
-function updateContinueButtons() {
-  planButton.textContent = review ? "Continue to structure" : "Suggest resume structure";
-  draftButton.textContent = canReuseWording() ? "Continue to wording review" : "Approve structure and suggest wording";
-}
-function persistPlanDraft() {
-  if (review && selectionDraft) {
-    localStorage.setItem("resumeTailorPlanDraft", JSON.stringify({ run_id: review.run_id, selection: selectionDraft }));
+function renderQuestions() {
+  renderAnalysis('analysis-view');
+  $('questions').replaceChildren();
+  $('generate-button').hidden=!run.analysis;
+  $('analysis-view').parentElement.hidden=!run.analysis;
+  if (!run.analysis) {
+    $('questions-title').textContent='Checking the role';
+    $('question-intro').textContent=run.task?.state==='error' ? 'The role analysis could not finish. Retry below to continue. Your saved knowledge is retained.' : 'Reading the job description and your saved knowledge before asking questions.';
+    $('save-answers').hidden=true;
+    $('answer-status').textContent='';
+    return;
   }
-  updateContinueButtons();
+  $('questions-title').textContent='Fill the useful gaps';
+  const questions=run.analysis.questions || [];
+  $('question-intro').textContent=questions.length ? 'We checked your saved knowledge. Add any missing detail, or leave an answer blank to skip.' : 'Your available evidence is enough to draft. No additional questions are needed.';
+  let local={}; try { local=JSON.parse(storage.get(`sculptAnswers:${run.run_id}`)||'{}'); } catch {}
+  $('questions').replaceChildren();
+  for (const q of questions) {
+    const card=node('div','plan-card'); card.dataset.question=q.id;
+    const label=node('label','',q.question), input=node('textarea','edit-field');
+    input.id=`answer-${q.id}`; label.htmlFor=input.id; input.maxLength=8000;
+    const answer=local[q.id] || run.answers?.[q.id] || {};
+    input.value=answer.text || '';
+    const kind=node('select'); kind.setAttribute('aria-label',`Answer type for ${q.question}`);
+    for (const [value,text] of [['fact','Confirmed experience'],['limitation','Not done / limitation'],['uncertain','Uncertain'],['planned','Future plan']]) kind.add(new Option(text,value));
+    kind.value=answer.kind || 'fact';
+    card.append(label,node('p','hint',q.why));
+    if (q.existing_source_ids?.length) card.append(node('p','hint',`Builds on saved evidence: ${q.existing_source_ids.join(', ')}`));
+    card.append(input,kind); $('questions').append(card);
+    for (const el of [input,kind]) el.addEventListener('input',()=>storage.set(`sculptAnswers:${run.run_id}`,JSON.stringify(answers())));
+  }
+  $('save-answers').hidden=!questions.length;
+  $('generate-button').textContent=questions.length?'Save and generate draft':'Generate tailored draft';
+  $('answer-status').textContent=Object.values(run.answers||{}).some(a=>a.text?.trim())?'Answers saved to knowledge.':'Answers are saved to your knowledge when you save or generate. Unsent text is recovered in this browser.';
 }
-planPanel.addEventListener("change", persistPlanDraft);
-
-function renderPlan() {
-  if (!review || !selectionDraft) return;
-  const catalog = review.catalog;
-  byId("plan-reason").textContent = typeof selectionDraft.plan_reason === "string"
-    ? selectionDraft.plan_reason : "Review the proposed order and selections.";
-
-  replace("section-order-controls", selectionDraft.section_order.map((section, index) => {
-    const row = node("div", "select-row");
-    const label = node("label", "", `${index + 1}. ${index === 3 ? "Fixed last" : "Section"}`);
-    const select = document.createElement("select");
-    for (const key of (index === 3 ? ["skills"] : ["experience", "education", "projects"])) {
-      select.add(new Option(sectionLabels[key], key));
+function answers() { return Object.fromEntries([...document.querySelectorAll('[data-question]')].map(card=>[card.dataset.question,{text:card.querySelector('textarea').value,kind:card.querySelector('select').value}])); }
+async function saveAnswers() {
+  const result=await action('/api/guided/answers',{answers:answers()},'Saving answers to your readable knowledge base…');
+  if (result) { storage.remove(`sculptAnswers:${run.run_id}`); $('answer-status').textContent='Saved to knowledge. These answers will be checked for future jobs.'; status(''); }
+  return result;
+}
+$('save-answers').onclick=saveAnswers;
+$('generate-button').onclick=async()=>{ if (busy || !run?.analysis) return; if ((run.analysis.questions||[]).length && !(await saveAnswers())) return; await action('/api/guided/draft',{},'Preparing a complete tailored draft…'); };
+function changeLabel(change) {
+  const key=change.id;
+  if (key==='structure') return 'Included content and order';
+  if (key==='summary') return 'Summary';
+  if (key.startsWith('skills:')) return `Skills · ${key.slice(7)}`;
+  const scope=key.split(':').slice(0,2).join(':'), tail=key.split(':').at(-1);
+  const position=run.draft.structure.bullet_ids[scope]?.indexOf(tail) ?? -1;
+  return `${run.entry_labels[scope] || scope} · ${tail==='title'?'Project title':tail==='tech'?'Technologies':position<0?'Omitted bullet':`Bullet ${position+1}`}`;
+}
+function structureView() {
+  const box=node('div','structure-summary'); const s=run.draft.structure;
+  box.append(node('p','',`Section order: ${s.section_order.join(' → ')}`));
+  const list=node('ol'); for (const id of s.project_ids) list.append(node('li','',run.entry_labels[`project:${id}`] || id)); box.append(list);
+  const omitted=Object.keys(run.entry_labels).filter(key=>key.startsWith('project:')&&!s.project_ids.includes(key.slice(8)));
+  if(omitted.length) box.append(node('p','hint',`Projects omitted: ${omitted.map(key=>run.entry_labels[key]).join('; ')}`));
+  box.append(node('p','hint',`Skill categories: ${s.skill_categories.join(' · ')}`));
+  const omittedSkills=Object.keys(run.evidence).filter(key=>key.startsWith('skills:')&&!s.skill_categories.includes(key.slice(7)));
+  if(omittedSkills.length)box.append(node('p','hint',`Skill categories omitted: ${omittedSkills.map(key=>key.slice(7)).join(' · ')}`));
+  for (const [scope,ids] of Object.entries(s.bullet_ids)) box.append(node('p','hint',`${run.entry_labels[scope]}: ${ids.length} bullets`));
+  return box;
+}
+function renderCompleteDraft(content) {
+  const box=$('complete-draft');box.replaceChildren();
+  if(!content)return;
+  box.append(node('h3','',content.contact.name),node('p','hint',[content.contact.email,content.contact.phone].filter(Boolean).join(' · ')));
+  box.append(node('h3','','Summary'),node('p','comparison-text',content.summary));
+  const labels={experience:'Work experience',education:'Education',projects:'Projects',skills:'Skills'};
+  for(const section of content.section_order || ['experience','education','projects','skills']) {
+    box.append(node('h3','',labels[section]));
+    if(section==='skills') {
+      for(const [name,items] of Object.entries(content.skills))box.append(node('p','field-caption',name),node('p','comparison-text',items.join(', ')));
+      continue;
     }
-    select.value = section;
-    select.disabled = index === 3;
-    select.addEventListener("change", () => {
-      const old = selectionDraft.section_order[index];
-      const other = selectionDraft.section_order.indexOf(select.value);
-      selectionDraft.section_order[other] = old;
-      selectionDraft.section_order[index] = select.value;
-      renderPlan();
-    });
-    row.append(label, select);
-    return row;
-  }));
-
-  replace("project-slots", selectionDraft.project_ids.map((projectId, index) => {
-    const project = catalog.projects.find((item) => item.id === projectId);
-    const card = node("div", "plan-card");
-    const row = node("div", "select-row");
-    const label = node("label", "", `Project ${index + 1}`);
-    const select = document.createElement("select");
-    for (const item of catalog.projects) select.add(new Option(`${item.heading} — ${item.name}`, item.id));
-    select.value = projectId;
-    select.addEventListener("change", () => {
-      const chosen = select.value;
-      const other = selectionDraft.project_ids.indexOf(chosen);
-      if (other >= 0) selectionDraft.project_ids[other] = projectId;
-      selectionDraft.project_ids[index] = chosen;
-      if (!selectionDraft.project_bullets[chosen]) {
-        selectionDraft.project_bullets[chosen] = catalog.projects
-          .find((item) => item.id === chosen).bullets.slice(0, 4).map((item) => item.id);
+    for(const entry of content[section] || []) {
+      box.append(node('p','field-caption',section==='experience'?`${entry.company} · ${entry.role}`:section==='education'?entry.institution:entry.name));
+      if(entry.dates)box.append(node('p','hint',entry.dates));
+      if(entry.tech)box.append(node('p','hint',entry.tech));
+      if(section==='education') {
+        box.append(node('p','comparison-text',[entry.degree,entry.specialisation,entry.honours,entry.gpa,...(entry.modules || [])].filter(Boolean).join('\n')));
+      } else {
+        const list=node('ul','');for(const bullet of entry.bullets || [])list.append(node('li','',bullet.text));box.append(list);
       }
-      renderPlan();
-    });
-    row.append(label, select);
-    card.append(row);
-    const rationale = selectionDraft.project_reasons?.[projectId];
-    if (typeof rationale === "string" && rationale) card.append(node("p", "hint", rationale));
-    for (const bullet of project.bullets) {
-      card.append(checkRow(bullet.text, (selectionDraft.project_bullets[projectId] || []).includes(bullet.id), (checked) => {
-        const current = selectionDraft.project_bullets[projectId] || [];
-        selectionDraft.project_bullets[projectId] = checked
-          ? [...current, bullet.id] : current.filter((id) => id !== bullet.id);
-      }));
     }
-    return card;
-  }));
-
-  const workRows = [];
-  for (const entry of catalog.experience) {
-    workRows.push(node("p", "group-label", `${entry.company} — ${entry.role}`));
-    for (const bullet of entry.bullets) {
-      workRows.push(checkRow(bullet.text, selectionDraft.experience_bullets.includes(bullet.id), (checked) => {
-        selectionDraft.experience_bullets = checked
-          ? [...selectionDraft.experience_bullets, bullet.id]
-          : selectionDraft.experience_bullets.filter((id) => id !== bullet.id);
-      }));
+    if(section==='education')for(const entry of content.certifications || [])box.append(node('p','hint',`${entry.org} · ${entry.title}`));
+  }
+}
+function renderReview() {
+  const changes=run.changes || [], decisions=run.decisions || {};
+  const pending=changes.filter(c=>!decisions[c.id]);
+  $('review-progress').textContent=`${changes.length-pending.length} of ${changes.length} changes reviewed`;
+  const findings=run.findings || [], unchecked=run.unchecked_fields || [];
+  const blockers=findings.filter(f=>f.kind==='factual');
+  $('finalize-button').disabled=busy || Boolean(pending.length || blockers.length || unchecked.length || run.knowledge_changed || run.layout_state!=='passed');
+  $('check-summary').textContent=busy ? (run.task?.message || 'Checking…') : `${blockers.length} factual concerns · ${unchecked.length} passages need checking${run.knowledge_changed ? ' · Knowledge changed: check again' : ''}`;
+  $('check-draft').hidden=!unchecked.length && !run.knowledge_changed && run.layout_state==='passed';
+  $('check-draft').disabled=busy;
+  $('layout-report').hidden=!(run.layout_issues || []).length;
+  $('layout-details').textContent=(run.layout_issues || []).join('\n');
+  const full=run.current_draft || run.draft;
+  renderCompleteDraft(run.resume_content);
+  const selected=new Set([...$('repair-fields').selectedOptions].map(o=>o.value));
+  $('repair-fields').replaceChildren();
+  for(const key of Object.keys(full.fields)) {
+    const option=new Option(changeLabel({id:key}),key); option.selected=selected.has(key); $('repair-fields').add(option);
+  }
+  $('refine-button').disabled=busy;
+  $('proposal-preview').disabled=!run.proposal_url;
+  $('changes').replaceChildren();
+  if (!openChange || !changes.some(c=>c.id===openChange)) openChange=pending[0]?.id || changes[0]?.id;
+  for (const change of changes) {
+    const flags=findings.filter(f=>f.field===change.id);
+    if ($('pending-only').checked && decisions[change.id] && !flags.some(f=>f.kind==='factual') && !unchecked.includes(change.id)) continue;
+    const card=node('details','review-group change-card'); card.dataset.change=change.id; card.open=change.id===openChange;
+    card.addEventListener('toggle',()=>{ if(card.open)openChange=change.id; });
+    const heading=node('summary','review-group-heading');
+    const needsEvidence=flags.some(f=>f.kind==='factual');
+    const badge=needsEvidence?'Needs evidence':unchecked.includes(change.id)?'Needs check':decisions[change.id]?.action || 'Pending';
+    heading.append(node('span','',changeLabel(change)),node('span',`decision-badge ${needsEvidence?'needs-evidence':decisions[change.id]?.action || ''}`,badge));
+    const body=node('div','edit-item-body');
+    if (change.id==='structure') body.append(structureView());
+    else {
+      body.append(node('p','field-caption','Original'),node('p','comparison-text',change.original || 'New bullet'),node('p','field-caption','Proposed'),node('p','comparison-text proposed',change.suggested || 'Omit this bullet'));
+      if(decisions[change.id]?.action==='edit') body.append(node('p','saved-decision',decisions[change.id].text));
     }
-  }
-  replace("work-bullets", workRows);
-  replace("skill-category-controls", catalog.skill_categories.map((name) => checkRow(
-    name, selectionDraft.skill_categories.includes(name), (checked) => {
-      selectionDraft.skill_categories = checked
-        ? [...selectionDraft.skill_categories, name]
-        : selectionDraft.skill_categories.filter((item) => item !== name);
-    },
-  )));
-  replace("summary-sentences", catalog.summary_sentences.map((item, index) => {
-    const row = checkRow(item.text, index === 0 || selectionDraft.summary_sentence_ids.includes(item.id), (checked) => {
-      selectionDraft.summary_sentence_ids = checked
-        ? [...selectionDraft.summary_sentence_ids, item.id]
-        : selectionDraft.summary_sentence_ids.filter((id) => id !== item.id);
-    });
-    row.querySelector("input").disabled = index === 0;
-    return row;
-  }));
-  updateContinueButtons();
-}
-
-function groupKey(item) {
-  return `${item.kind.startsWith("work_") ? "work" : "project"}:${item.label.split(" · ")[0]}`;
-}
-
-function groupTitle(item) {
-  return `${item.kind.startsWith("work_") ? "Work Experience" : "Project"} · ${item.label.split(" · ")[0]}`;
-}
-
-function itemTitle(item) {
-  if (item.kind.endsWith("tech")) return "Technology list";
-  if (item.kind === "project_title") return "Project title";
-  const match = item.id.match(/-b(\d+)$/);
-  return match ? `Bullet ${match[1]}` : "Bullet";
-}
-
-function changedText(original, suggested, isProposal) {
-  const before = original.match(/\S+|\s+/g) || [];
-  const after = suggested.match(/\S+|\s+/g) || [];
-  const rows = Array.from({ length: before.length + 1 }, () => new Uint16Array(after.length + 1));
-  for (let i = before.length - 1; i >= 0; i--) {
-    for (let j = after.length - 1; j >= 0; j--) {
-      rows[i][j] = before[i] === after[j] ? rows[i + 1][j + 1] + 1 : Math.max(rows[i + 1][j], rows[i][j + 1]);
+    for(const finding of flags) body.append(node('p',finding.kind==='factual'?'status error':'hint',`${finding.kind==='factual'?'Needs evidence':'Suggestion'}: ${finding.reason}`));
+    if(unchecked.includes(change.id)) body.append(node('p','hint','This passage needs an evidence check before export.'));
+    if(flags.length && change.id!=='structure') {
+      const fix=node('button','secondary-button','Correct this passage');fix.disabled=busy;
+      fix.onclick=()=>repair([change.id]);body.append(fix);
     }
-  }
-  const beforeShared = new Set();
-  const afterShared = new Set();
-  for (let i = 0, j = 0; i < before.length && j < after.length;) {
-    if (before[i] === after[j]) { beforeShared.add(i++); afterShared.add(j++); }
-    else if (rows[i + 1][j] >= rows[i][j + 1]) i++;
-    else j++;
-  }
-  const container = node("p", `comparison-text ${isProposal ? "proposed" : ""}`.trim());
-  const tokens = isProposal ? after : before;
-  const shared = isProposal ? afterShared : beforeShared;
-  tokens.forEach((token, index) => {
-    if (shared.has(index) || !token.trim()) container.append(document.createTextNode(token));
-    else container.append(node(isProposal ? "ins" : "del", "changed-token", token));
-  });
-  return container;
-}
-
-function suggestionRow(item) {
-  const decision = review.decisions[item.id];
-  const status = decision?.action === "accept" ? "Accepted"
-    : decision?.action === "keep" ? "Kept master"
-      : decision?.action === "edit" ? "Edited" : "Pending";
-  const row = document.createElement("details");
-  row.className = "edit-item";
-  row.id = `suggestion-${item.id.replace(/[^a-z0-9]/gi, "-")}`;
-  row.open = openSuggestionId === item.id;
-  row.addEventListener("toggle", () => {
-    if (row.open) openSuggestionId = item.id;
-    else if (openSuggestionId === item.id) openSuggestionId = null;
-  });
-  const summary = node("summary", "edit-item-heading");
-  const title = node("span", "edit-item-title", itemTitle(item));
-  const excerpt = node("span", "edit-item-excerpt", item.reason);
-  const badge = node("span", `decision-badge ${decision?.action || "pending"}`, status);
-  summary.append(title, excerpt, badge);
-  row.append(summary);
-  const body = node("div", "edit-item-body");
-  body.append(node("p", "field-caption", "Master wording"), changedText(item.original, item.suggested, false));
-  body.append(node("p", "field-caption", "AI suggestion"), changedText(item.original, item.suggested, true));
-  body.append(node("p", "suggestion-reason", item.reason));
-  const evidence = node("details", "evidence");
-  evidence.append(node("summary", "", `Supporting master text · ${item.evidence.length} source${item.evidence.length === 1 ? "" : "s"}`));
-  for (const source of item.evidence) evidence.append(node("p", "", `${source.id}: ${source.text}`));
-  body.append(evidence);
-  if (decision?.action === "edit") body.append(node("p", "saved-decision", `Your saved edit: ${decision.text}`));
-  const actions = node("div", "action-grid");
-  for (const [action, label] of [["accept", "Accept suggestion"], ["keep", "Keep master wording"]]) {
-    const button = node("button", action === "keep" ? "secondary-button" : "", label);
-    button.type = "button";
-    button.addEventListener("click", () => saveDecision(item.id, action));
-    actions.append(button);
-  }
-  body.append(actions);
-  const more = node("details", "edit-options");
-  more.append(node("summary", "", "Edit wording or ask AI for another version"));
-  const edit = document.createElement("textarea");
-  edit.className = "edit-field";
-  edit.value = decision?.action === "edit" ? decision.text : item.suggested;
-  const saveEdit = node("button", "secondary-button", "Save my edit");
-  saveEdit.type = "button";
-  saveEdit.addEventListener("click", () => saveDecision(item.id, "edit", edit.value));
-  more.append(node("label", "", "Your wording"), edit, saveEdit);
-  const feedback = document.createElement("input");
-  feedback.type = "text";
-  feedback.maxLength = 1000;
-  feedback.placeholder = "For example: emphasize deployment work";
-  const revise = node("button", "text-button", "Suggest another version");
-  revise.type = "button";
-  revise.addEventListener("click", () => reviseCurrent(item.id, feedback.value));
-  more.append(node("label", "", "Guidance for AI (optional)"), feedback, revise);
-  body.append(more);
-  row.append(body);
-  return row;
-}
-
-function renderWording() {
-  if (!review) return;
-  const suggestions = review.suggestions || [];
-  const decisions = review.decisions || {};
-  const completed = suggestions.filter((item) => decisions[item.id]).length;
-  const pending = suggestions.length - completed;
-  byId("review-progress").textContent = suggestions.length
-    ? `${completed} of ${suggestions.length} edits reviewed. Pending edits use master wording in draft previews.`
-    : "The AI suggested no wording changes. Preview or build the approved structure as it stands.";
-  const counts = [
-    ["Pending", pending, "pending"],
-    ["Accepted", Object.values(decisions).filter((item) => item.action === "accept").length, "accept"],
-    ["Kept master", Object.values(decisions).filter((item) => item.action === "keep").length, "keep"],
-    ["Edited", Object.values(decisions).filter((item) => item.action === "edit").length, "edit"],
-  ];
-  replace("review-counts", counts.map(([name, count, className]) => node("span", `count-chip ${className}`, `${count} ${name}`)));
-  const groups = new Map();
-  for (const item of suggestions) {
-    const key = groupKey(item);
-    if (!groups.has(key)) groups.set(key, { title: groupTitle(item), items: [] });
-    groups.get(key).items.push(item);
-  }
-  if (!openGroupKeys.size && groups.size) openGroupKeys.add(groups.keys().next().value);
-  const pendingOnly = byId("pending-only").checked;
-  const board = [];
-  for (const [key, group] of groups) {
-    const shown = pendingOnly ? group.items.filter((item) => !decisions[item.id]) : group.items;
-    if (!shown.length) continue;
-    const box = document.createElement("details");
-    box.className = "review-group";
-    box.open = openGroupKeys.has(key) || shown.some((item) => item.id === openSuggestionId);
-    box.addEventListener("toggle", () => {
-      if (box.open) openGroupKeys.add(key);
-      else {
-        openGroupKeys.delete(key);
-        if (group.items.some((item) => item.id === openSuggestionId)) openSuggestionId = null;
-      }
-    });
-    const groupPending = group.items.filter((item) => !decisions[item.id]).length;
-    const heading = node("summary", "review-group-heading");
-    heading.append(node("span", "", group.title), node("span", "group-count", `${groupPending} pending · ${group.items.length} edits`));
-    box.append(heading, ...shown.map(suggestionRow));
-    board.push(box);
-  }
-  if (!board.length) board.push(node("p", "board-empty", pendingOnly ? "All suggestions have a decision. Show all to revisit them." : "No wording edits were proposed."));
-  replace("review-board", board);
-  finalizeButton.disabled = pending !== 0;
-}
-
-async function saveDecision(id, action, text = "") {
-  try {
-    const result = await postJson("/api/decision", { run_id: review.run_id, suggestion_id: id, action, text });
-    resetPreview();
-    review.stage = "wording";
-    review.decisions = result.decisions;
-    const currentIndex = review.suggestions.findIndex((item) => item.id === id);
-    const remaining = review.suggestions.filter((item) => !review.decisions[item.id]);
-    if (!remaining.length) byId("pending-only").checked = false;
-    openSuggestionId = remaining.find((item) => review.suggestions.indexOf(item) > currentIndex)?.id
-      || remaining[0]?.id || id;
-    const nextItem = review.suggestions.find((item) => item.id === openSuggestionId);
-    if (nextItem) openGroupKeys.add(groupKey(nextItem));
-    renderWording();
-    if (remaining.length && openSuggestionId) {
-      document.getElementById(`suggestion-${openSuggestionId.replace(/[^a-z0-9]/gi, "-")}`)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const current=full.fields[change.id];
+    if(current && (flags.some(f=>f.kind==='factual') || unchecked.includes(change.id))) {
+      const box=node('details','edit-options');box.append(node('summary','','Confirm a fact missing from my sources'));
+      box.append(node('p','comparison-text',current.text));
+      const label=node('label',''), checkbox=node('input');checkbox.type='checkbox';
+      label.append(checkbox,document.createTextNode(' I confirm every claim in this exact passage, including who did it and its outcomes.'));
+      const confirm=node('button','secondary-button','Confirm passage and save to knowledge');confirm.disabled=true;
+      checkbox.onchange=()=>{confirm.disabled=busy || !checkbox.checked;};
+      confirm.onclick=()=>action('/api/guided/confirm',{change_id:change.id,text:current.text,confirmed:true},'Saving the confirmed passage to knowledge…');
+      box.append(label,confirm);body.append(box);
     }
-    setStatus(remaining.length ? `Decision saved. ${remaining.length} edits remain.` : "All edits reviewed. Preview the draft or build the final PDF.", "success");
-  } catch (error) { showRequestError(error); }
-}
-
-async function reviseCurrent(id, feedback) {
-  setStatus("Requesting a new version for this item…");
-  try {
-    const result = await postJson("/api/revise", { run_id: review.run_id, suggestion_id: id, feedback });
-    resetPreview();
-    review.stage = "wording";
-    const index = review.suggestions.findIndex((item) => item.id === id);
-    review.suggestions[index] = result.suggestion;
-    review.decisions = result.decisions;
-    openSuggestionId = id;
-    renderWording();
-    setStatus("New suggestion ready for review.", "success");
-  } catch (error) { showRequestError(error); }
-}
-
-function showFinal(result) {
-  showPdf(result.pdf_url, "Final PDF built from your reviewed decisions.");
-  byId("review-note").textContent = result.review_note || "PDF built from your reviewed decisions.";
-  byId("summary").textContent = result.summary || "";
-  replace("projects", (result.projects || []).map((project) => node("li", "", project.name)));
-  replace("warnings", (result.warnings || []).map((warning) => node("p", "", warning)));
-  details.hidden = false;
-  showStep("final");
-  setStatus("Reviewed PDF ready. Inspect the preview before using it.", "success");
-}
-
-jdInput.addEventListener("input", () => {
-  if (hasParsedJob) {
-    hasParsedJob = false;
-    parsedSourceText = "";
-    clearReview("The pasted text changed. Parse it again before tailoring.");
-  }
-});
-for (const field of reviewFields) {
-  byId(field).addEventListener("input", () => {
-    if (review) clearReview("The reviewed JD changed. Suggest a new structure to use your edits.");
-  });
-}
-parseForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const jd = jdInput.value.trim();
-  if (!jd) { setStatus("Paste a job description first.", "error"); return; }
-  if (hasParsedJob && jd === parsedSourceText) {
-    closePdf();
-    showStep("parsed");
-    setStatus("Review the parsed job details before continuing.");
-    return;
-  }
-  hasParsedJob = false;
-  parsedSourceText = "";
-  clearReview();
-  parseButton.disabled = true;
-  jdInput.disabled = true;
-  parseButton.textContent = "Parsing…";
-  setStatus("Extracting the company, job role, and cleaned description.");
-  try {
-    const result = await postJson("/api/parse", { jd });
-    fillParsedFields(result.parsed_jd);
-    hasParsedJob = true;
-    parsedSourceText = jd;
-    showStep("parsed");
-    setStatus("Review the cleaned JD, then ask for a structure plan.", "success");
-  } catch (error) { showRequestError(error); }
-  finally {
-    jdInput.disabled = false;
-    parseButton.disabled = false;
-    parseButton.textContent = hasParsedJob ? "Continue to parsed job" : "Parse job posting";
-  }
-});
-byId("back-to-jd").addEventListener("click", () => {
-  parseButton.textContent = hasParsedJob ? "Continue to parsed job" : "Parse job posting";
-  closePdf();
-  showStep("paste");
-  setStatus("Your job posting is preserved. Edit it and parse again if needed.");
-});
-planButton.addEventListener("click", async () => {
-  if (review && selectionDraft) {
-    renderPlan();
-    closePdf();
-    showStep("plan");
-    setStatus("Review the structure before continuing.");
-    return;
-  }
-  planButton.disabled = true;
-  setStatus("Choosing section order, five projects, and supporting master content. This AI step can take several minutes…");
-  try {
-    review = await postJson("/api/plan", { parsed_jd: reviewedFields() });
-    selectionDraft = structuredClone(review.selection);
-    localStorage.setItem("resumeTailorReviewId", review.run_id);
-    renderPlan();
-    showStep("plan");
-    setStatus("Review the structure. Change the order or selections before approving.", "success");
-  } catch (error) { showRequestError(error); }
-  finally { planButton.disabled = false; }
-});
-byId("back-to-parsed").addEventListener("click", () => {
-  updateContinueButtons();
-  closePdf();
-  showStep("parsed");
-  setStatus("Review the extracted job details. Your structure choices are preserved.");
-});
-draftButton.addEventListener("click", async () => {
-  if (canReuseWording()) {
-    renderWording();
-    closePdf();
-    showStep("wording");
-    setStatus("Continue reviewing your saved wording decisions.");
-    return;
-  }
-  draftButton.disabled = true;
-  setStatus("Drafting source-linked wording suggestions for your approved structure…");
-  try {
-    review = await postJson("/api/draft", { run_id: review.run_id, selection: approvedSelection() });
-    selectionDraft = structuredClone(review.selection);
-    localStorage.removeItem("resumeTailorPlanDraft");
-    resetPreview();
-    openSuggestionId = review.suggestions[0]?.id || null;
-    openGroupKeys = new Set(review.suggestions[0] ? [groupKey(review.suggestions[0])] : []);
-    byId("pending-only").checked = false;
-    renderWording();
-    showStep("wording");
-    setStatus(`Review ${review.suggestions.length} wording suggestions by resume entry.`, "success");
-  } catch (error) { showRequestError(error); }
-  finally { draftButton.disabled = false; }
-});
-byId("pending-only").addEventListener("change", renderWording);
-byId("preview-draft-button").addEventListener("click", async () => {
-  const button = byId("preview-draft-button");
-  const requestToken = previewRequestToken;
-  button.disabled = true;
-  setStatus("Building a draft PDF from your current decisions…");
-  try {
-    const result = await postJson("/api/preview", { run_id: review.run_id });
-    if (requestToken !== previewRequestToken) return;
-    const url = `${result.pdf_url}?v=${Date.now()}`;
-    const caption = result.pending
-      ? `Draft PDF · ${result.pending} pending edit${result.pending === 1 ? "" : "s"} still use master wording.`
-      : "Draft PDF · all proposed edits have been reviewed.";
-    showPdf(url, caption);
-    setStatus(result.warnings?.length ? `Draft PDF ready. ${result.warnings.join(" ")}` : "Draft PDF ready for review.", "success");
-  } catch (error) { showRequestError(error); }
-  finally { button.disabled = false; }
-});
-byId("back-to-plan").addEventListener("click", () => {
-  renderPlan();
-  closePdf();
-  showStep("plan");
-  setStatus("Your wording decisions are preserved while you review the structure.");
-});
-byId("back-to-wording").addEventListener("click", () => {
-  renderWording();
-  closePdf();
-  showStep("wording");
-  setStatus("Your finished PDF and wording decisions are preserved.");
-});
-byId("view-final-pdf").addEventListener("click", () => {
-  if (review?.pdf_url) showPdf(review.pdf_url, "Final PDF built from your reviewed decisions.");
-});
-byId("master-preview-button").addEventListener("click", () => {
-  showPdf("/api/master.pdf", "Master resume for reference.");
-});
-byId("close-preview").addEventListener("click", closePdf);
-finalizeButton.addEventListener("click", async () => {
-  finalizeButton.disabled = true;
-  setStatus("Building the PDF from your decisions and checking its layout…");
-  try {
-    const result = await postJson("/api/finalize", { run_id: review.run_id });
-    review.stage = "final";
-    review.pdf_url = result.pdf_url;
-    review.warnings = result.warnings;
-    showFinal(result);
-  } catch (error) { showRequestError(error); }
-  finally { finalizeButton.disabled = false; }
-});
-async function restoreReview() {
-  const runId = localStorage.getItem("resumeTailorReviewId");
-  if (!runId) return;
-  const version = resetVersion;
-  try {
-    const response = await fetch(`/api/review/${encodeURIComponent(runId)}`);
-    if (version !== resetVersion) return;
-    if (response.status === 404) {
-      localStorage.removeItem("resumeTailorReviewId");
-      localStorage.removeItem("resumeTailorPlanDraft");
-      setStatus("The saved review is no longer on the server. Start a new job description; free hosting may clear reviews when it sleeps.", "error");
-      return;
+    const evidence=node('details','evidence'); evidence.append(node('summary','','Why this change?'));
+    evidence.append(node('p','',change.reason));
+    for(const id of change.requirement_ids || []) {const req=run.analysis.requirements.find(r=>r.id===id);if(req)evidence.append(node('p','',`JD: ${req.quote}`));}
+    for(const id of decisions[change.id]?.source_ids || change.source_ids || []) {const fact=run.evidence[id]; if(fact)evidence.append(node('p','',`${id}: ${fact.text}`));}
+    body.append(evidence);
+    const controls=node('div','action-grid');
+    const options=change.required?[['accept','Approve included content']]:[['accept',change.suggested?'Accept proposal':'Approve omission'],['keep',change.original?'Keep original':'Omit new bullet']];
+    for(const [actionName,label] of options){const button=node('button',actionName==='keep'?'secondary-button':'',label);button.type='button';button.disabled=busy;button.onclick=()=>decide(change.id,actionName);controls.append(button);}
+    body.append(controls);
+    if (!change.required && change.suggested) {
+      const editBox=node('details','edit-options'); editBox.append(node('summary','','Edit this text'));
+      const input=node('textarea','edit-field'); input.value=decisions[change.id]?.text || change.suggested; input.maxLength=2000; input.setAttribute('aria-label',`Edit ${changeLabel(change)}`);
+      const save=node('button','secondary-button','Save my edit'); save.type='button';save.disabled=busy;save.onclick=()=>decide(change.id,'edit',input.value);
+      editBox.append(input,node('p','hint','Save your edit, then check it against your evidence. If it adds a true fact, explicitly confirm the complete passage to save it to knowledge.'),save);body.append(editBox);
     }
-    if (!response.ok) throw new Error("Saved review unavailable. Refresh to try again.");
-    const restored = await response.json();
-    if (version !== resetVersion) return;
-    review = restored;
-    selectionDraft = structuredClone(review.selection);
-    hasParsedJob = true;
-    jdInput.value = review.parsed_jd.jd_text;
-    parsedSourceText = jdInput.value.trim();
-    parseButton.textContent = "Continue to parsed job";
-    if (review.stage === "plan") {
-      const saved = JSON.parse(localStorage.getItem("resumeTailorPlanDraft") || "null");
-      if (saved?.run_id === review.run_id && saved.selection) selectionDraft = saved.selection;
-    }
-    fillParsedFields(review.parsed_jd);
-    if (review.stage === "plan") {
-      renderPlan();
-      showStep("plan", false);
-    }
-    if (review.stage === "wording") {
-      openSuggestionId = review.suggestions.find((item) => !review.decisions[item.id])?.id || review.suggestions[0]?.id || null;
-      openGroupKeys = new Set(openSuggestionId ? [groupKey(review.suggestions.find((item) => item.id === openSuggestionId))] : []);
-      renderWording();
-      showStep("wording", false);
-    }
-    if (review.stage === "final" && review.pdf_url) showFinal(review);
-    setStatus("Saved review restored. Continue where you left off.", "success");
-  } catch (error) { if (version === resetVersion) setStatus(error.message, "error"); }
+    card.append(heading,body);$('changes').append(card);
+  }
+  if (!$('changes').children.length) $('changes').append(node('p','board-empty','All proposals are reviewed. Turn off Pending only to revisit them.'));
+  renderAnalysis('coverage-view',true);
+  $('recommendations').replaceChildren();
+  const recommendations=run.analysis.recommendations || [];
+  if(recommendations.length)$('recommendations').append(node('h3','','Future work · not included in your resume'));
+  for(const rec of recommendations)$('recommendations').append(node('h3','',rec.title),node('p','hint',rec.detail));
 }
-showStep("paste", false);
-restoreReview();
+async function decide(id, actionName, text='') {
+  const result=await action('/api/guided/decision',{change_id:id,action:actionName,text},'Saving your decision…');
+  if(result){closePdf();openChange=run.changes.find(c=>!run.decisions[c.id])?.id || id;renderReview();status('');const card=[...document.querySelectorAll('[data-change]')].find(c=>c.dataset.change===openChange);card?.querySelector('summary')?.focus();}
+}
+$('pending-only').onchange=renderReview;
+async function repair(fields) {
+  if(busy)return;
+  if(!fields.length){status('Select the passages to change.',true);return;}
+  closePdf();await action('/api/guided/repair',{fields,direction:$('direction').value},'Correcting only selected passages…');
+}
+$('refine-button').onclick=()=>repair([...$('repair-fields').selectedOptions].map(o=>o.value));
+$('check-draft').onclick=()=>action('/api/guided/check',{},'Checking changed passages and PDF limits…');
+$('finalize-button').onclick=()=>action('/api/guided/finish',{},'Checking your reviewed choices…');
+$('retry-button').onclick=()=>{
+  const operation=run.task?.operation;
+  if(operation==='check')return action('/api/guided/check',{},'Resuming evidence check…');
+  if(operation==='repair')return action('/api/guided/repair',{fields:run.repair_fields,direction:run.direction || ''},'Resuming selected corrections…');
+  return action(operation==='finish'?'/api/guided/finish':operation==='draft'?'/api/guided/draft':'/api/guided/analyze', operation==='draft'?{direction:$('direction').value || run.direction || ''}:{} ,'Retrying…');
+};
+function reset(){epoch++;clearTimeout(pollTimer);run=null;openChange=null;storage.remove('sculptGuidedRunId');storage.remove('sculptPastedJob');$('parse-form').reset();fillJob({});$('jd-count').textContent='0 / 30,000';$('pending-only').checked=false;$('task-actions').hidden=true;setBusy(false);closePdf();showStep('paste');status('');}
+$('reset-button').onclick=()=>{if(run || $('jd').value){$('reset-dialog').returnValue='';$('reset-dialog').showModal();}else reset();};
+$('reset-dialog').addEventListener('close',()=>{if($('reset-dialog').returnValue==='reset')reset();});
+async function loadKnowledge(){knowledge=await request('/api/knowledge');$('knowledge-storage').textContent=knowledge.storage || '';renderKnowledge();}
+function kbStatus(message,error=false){$('knowledge-status').hidden=!message;$('knowledge-status').textContent=message;$('knowledge-status').className=`status${error?' error':''}`;}
+function renderKnowledge(){
+  $('knowledge-list').replaceChildren();
+  const entries=knowledge.document.entries.filter(e=>!e.archived);
+  if(!entries.length)$('knowledge-list').append(node('p','hint','No saved knowledge yet. Add information here or answer questions during tailoring.'));
+  for(const entry of entries){
+    const card=node('details','plan-card');card.append(node('summary','',`${knowledge.scopes[entry.scope] || entry.scope} · ${entry.kind}`));
+    if(entry.question)card.append(node('p','hint',entry.question));card.append(node('p','knowledge-text',entry.text));
+    const controls=node('div','action-grid'),edit=node('button','secondary-button','Edit'),archive=node('button','secondary-button','Archive');
+    edit.onclick=()=>editKnowledge(entry);archive.onclick=()=>saveKnowledge({...entry,archived:true});controls.append(edit,archive);card.append(controls);$('knowledge-list').append(card);
+  }
+}
+function editKnowledge(entry=null){
+  editingKnowledge=entry;const select=$('knowledge-scope');select.replaceChildren();for(const [key,label] of Object.entries(knowledge.scopes))select.add(new Option(label,key));
+  select.value=entry?.scope || 'general';$('knowledge-kind').value=entry?.kind || 'fact';$('knowledge-text').value=entry?.text || '';$('knowledge-form').hidden=false;$('knowledge-text').focus();
+}
+async function saveKnowledge(entry){
+  const button=$('knowledge-form').querySelector('button');button.disabled=true;
+  try{knowledge=await request('/api/knowledge/save',{entry,revision:knowledge.revision});renderKnowledge();$('knowledge-form').hidden=true;editingKnowledge=null;kbStatus('Saved to knowledge.json. Refine an existing draft to use updated facts.');}
+  catch(error){kbStatus(error.message,true);await loadKnowledge().catch(()=>{});}finally{button.disabled=false;}
+}
+$('knowledge-button').onclick=async()=>{$('knowledge-dialog').showModal();kbStatus('Loading…');try{await loadKnowledge();kbStatus('');}catch(error){kbStatus(error.message,true);}};
+$('close-knowledge').onclick=()=>$('knowledge-dialog').close();
+$('new-knowledge').onclick=()=>{if(knowledge)editKnowledge();};
+$('knowledge-form').addEventListener('submit',event=>{event.preventDefault();saveKnowledge({...editingKnowledge,scope:$('knowledge-scope').value,kind:$('knowledge-kind').value,text:$('knowledge-text').value,archived:false});});
+async function restore(){
+  $('legacy-link').hidden=!storage.get('resumeTailorReviewId');
+  $('jd').value=storage.get('sculptPastedJob')||'';$('jd-count').textContent=`${$('jd').value.length.toLocaleString()} / 30,000`;
+  const id=storage.get('sculptGuidedRunId');if(!id)return;const version=epoch;
+  try{const saved=await request(`/api/guided/run/${encodeURIComponent(id)}`);if(version===epoch)receive(saved,false);}
+  catch(error){if(version===epoch)status(error.message,true);}
+}
+showStep('paste',false);restore();

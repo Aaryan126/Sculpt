@@ -9,4 +9,6 @@ __pycache__/
 Master_Resume.docx
 output/
 content/tailored/
+knowledge/knowledge.json
+knowledge/history/
 tmp/

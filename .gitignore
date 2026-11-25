@@ -4,3 +4,7 @@ __pycache__/
 .DS_Store
 content/tailored/
 output/tailored/
+output/benchmarks/
+knowledge/knowledge.json
+knowledge/history/
+knowledge/.*.tmp

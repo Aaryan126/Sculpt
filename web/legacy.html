@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sculpt — Resume workspace</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="/legacy.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#workspace">Skip to workspace</a>
+    <div class="workspace-shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="Sculpt home">Sculpt<span class="brand-dot">.</span></a>
+        <div class="header-actions"><a href="/">New tailoring flow</a>
+          <button id="master-preview-button" type="button" class="master-link" aria-controls="preview-panel" aria-expanded="false">Master PDF</button>
+          <button id="reset-button" type="button" class="reset-button">New resume</button>
+        </div>
+      </header>
+      <main id="workspace" class="layout">
+        <div class="work-area">
+      <section class="panel editor" aria-label="Resume tailoring wizard">
+        <p id="job-context" class="job-context" hidden><span id="job-context-title"></span></p>
+        <div class="wizard-progress" aria-label="Resume tailoring progress">
+          <span id="wizard-progress-label">Step 1 of 5 · Job description</span>
+          <div class="wizard-progress-track" aria-hidden="true"><span id="wizard-progress-fill"></span></div>
+        </div>
+        <section id="paste-panel" class="wizard-screen" aria-labelledby="jd-title">
+          <div class="panel-heading">
+            <div>
+              <h2 id="jd-title">Tailor your resume</h2>
+              <p class="hint intro-hint">Paste a job description to get started.</p>
+            </div>
+          </div>
+          <form id="parse-form">
+            <div class="field-heading"><label for="jd">Job description</label><span id="jd-count">0 / 30,000</span></div>
+            <textarea id="jd" name="jd" placeholder="Paste the role, responsibilities, and requirements…" spellcheck="true" maxlength="30000" aria-describedby="jd-help" required></textarea>
+            <div class="form-footer">
+              <span id="jd-help">Your master resume stays unchanged.</span>
+              <button id="parse-button" type="submit">Continue <span aria-hidden="true">→</span></button>
+            </div>
+          </form>
+        </section>
+        <section id="parsed-panel" class="wizard-screen" aria-labelledby="parsed-title" hidden>
+          <button id="back-to-jd" type="button" class="back-link">← Back to job posting</button>
+          <h2 id="parsed-title">Review job details</h2>
+          <p class="hint">Correct anything we missed before continuing.</p>
+          <div class="field-grid">
+            <div><label for="company">Company</label><input id="company" type="text" maxlength="250"></div>
+            <div><label for="role">Job role</label><input id="role" type="text" maxlength="250"></div>
+          </div>
+          <label for="jd_text">Cleaned job description</label>
+          <textarea id="jd_text" class="cleaned-jd-field" maxlength="30000" spellcheck="true"></textarea>
+          <button id="plan-button" type="button">Suggest resume structure</button>
+        </section>
+        <section id="plan-panel" class="wizard-screen" aria-labelledby="plan-title" hidden>
+          <button id="back-to-parsed" type="button" class="back-link">← Back to parsed job</button>
+          <h2 id="plan-title">Choose resume content</h2>
+          <details class="selection-reason"><summary>Why this selection?</summary><p id="plan-reason" class="hint"></p></details>
+          <h3>Section order</h3>
+          <p class="hint">The first three sections can move. Skills stays last.</p>
+          <div id="section-order-controls" class="review-stack"></div>
+          <h3>Projects · choose 5</h3>
+
+          <div id="project-slots" class="review-stack"></div>
+          <h3>Work experience bullets</h3>
+          <p class="hint">Keep three or four bullets when available, or every bullet from a shorter master entry.</p>
+          <div id="work-bullets" class="review-stack"></div>
+          <h3>Skill categories</h3>
+          <div id="skill-category-controls" class="review-stack"></div>
+          <h3>Summary sentences</h3>
+          <p class="hint">The first master sentence is always included.</p>
+          <div id="summary-sentences" class="review-stack"></div>
+          <p id="plan-validation" class="status error" role="status" hidden></p>
+          <div class="step-actions"><button id="draft-button" type="button">Approve structure and suggest wording</button></div>
+        </section>
+        <section id="wording-panel" class="wizard-screen" aria-labelledby="wording-title" hidden>
+          <button id="back-to-plan" type="button" class="back-link">← Back to structure</button>
+          <h2 id="wording-title">Review wording</h2>
+          <p class="hint">Accept, keep, or edit each suggestion.</p>
+          <div class="board-toolbar">
+            <p id="review-progress" class="hint" role="status"></p>
+            <label class="pending-toggle"><input id="pending-only" type="checkbox"> Show pending only</label>
+          </div>
+          <div id="review-board" class="review-board"></div>
+          <div class="step-actions"><button id="preview-draft-button" type="button" class="secondary-button">Preview current draft PDF</button>
+          <button id="finalize-button" aria-describedby="finalize-hint" type="button">Build reviewed PDF</button></div>
+          <p id="finalize-hint" class="hint action-hint"></p>
+        </section>
+        <section id="final-panel" class="wizard-screen" aria-labelledby="final-title" hidden>
+          <button id="back-to-wording" type="button" class="back-link">← Back to wording review</button>
+          <h2 id="final-title">Your resume is ready</h2>
+          <p class="hint">Check the PDF, then download it for your application.</p>
+          <a id="download-final-pdf" class="button-link" download="tailored-resume.pdf">Download PDF <span aria-hidden="true">↓</span></a>
+          <button id="view-final-pdf" type="button" class="secondary-button final-pdf-button">View finished PDF</button>
+          <p class="hint action-hint">Save your PDF before leaving; hosted sessions may expire.</p>
+          <details id="details" class="details" hidden>
+            <summary>Resume details</summary>
+            <p id="review-note" class="review-note"></p>
+            <h3>Selected projects</h3>
+            <ol id="projects"></ol>
+            <h3>Selected summary</h3>
+            <p id="summary" class="summary"></p>
+          </details>
+          <div id="warnings" role="status"></div>
+        </section>
+        <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+      </section>
+
+      <section id="preview-panel" class="panel preview" aria-labelledby="preview-title" hidden>
+        <div class="preview-heading">
+          <div>
+            <h2 id="preview-title">Resume PDF</h2>
+            <p id="preview-caption" class="hint"></p>
+          </div>
+          <div class="preview-actions">
+            <a id="pdf-link" href="#" target="_blank" rel="noopener">Open PDF ↗</a>
+            <button id="close-preview" type="button" class="preview-close">Close</button>
+          </div>
+        </div>
+        <iframe id="pdf-preview" title="Resume PDF preview" src="about:blank"></iframe>
+      </section>
+        </div>
+      </main>
+    </div>
+    <dialog id="reset-dialog" aria-labelledby="reset-title"><form method="dialog"><h2 id="reset-title">Start a new resume?</h2><p>This clears the current workspace. Download any finished PDF you want to keep first.</p><div class="action-grid"><button value="cancel" class="secondary-button" autofocus>Keep working</button><button value="reset">Start new resume</button></div></form></dialog>
+  </body>
+</html>

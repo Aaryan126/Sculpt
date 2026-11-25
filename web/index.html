@@ -3,115 +3,102 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Resume Tailor</title>
+    <title>Sculpt — Resume workspace</title>
     <link rel="stylesheet" href="/style.css">
     <script src="/app.js" defer></script>
   </head>
   <body>
-    <header class="topbar">
-      <div>
-        <p class="eyebrow">RESUME WORKSPACE</p>
-        <h1>Resume Tailor</h1>
-        <p class="subtitle">Review the JD, approve the structure and wording, then preview your PDF.</p>
-      </div>
-      <div class="header-actions">
-        <button id="master-preview-button" type="button" class="master-link">View master PDF</button>
-        <button id="reset-button" type="button" class="reset-button">New JD</button>
-      </div>
-    </header>
-
-    <main class="layout">
+    <a class="skip-link" href="#workspace">Skip to workspace</a>
+    <div class="workspace-shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="Sculpt home">Sculpt<span class="brand-dot">.</span></a>
+        <div class="header-actions">
+          <button id="knowledge-button" type="button" class="master-link">Knowledge</button>
+          <button id="master-preview-button" type="button" class="master-link" aria-controls="preview-panel" aria-expanded="false">Master PDF</button>
+          <button id="reset-button" type="button" class="reset-button">New resume</button>
+        </div>
+      </header>
+      <main id="workspace" class="layout">
+        <div class="work-area">
       <section class="panel editor" aria-label="Resume tailoring wizard">
+        <p id="job-context" class="job-context" hidden><span id="job-context-title"></span></p>
         <div class="wizard-progress" aria-label="Resume tailoring progress">
           <span id="wizard-progress-label">Step 1 of 5 · Job description</span>
-          <div class="wizard-progress-track"><span id="wizard-progress-fill"></span></div>
+          <div class="wizard-progress-track" aria-hidden="true"><span id="wizard-progress-fill"></span></div>
         </div>
         <section id="paste-panel" class="wizard-screen" aria-labelledby="jd-title">
           <div class="panel-heading">
             <div>
-              <p class="step">01 / JOB DESCRIPTION</p>
-              <h2 id="jd-title">What role are you applying for?</h2>
+              <h2 id="jd-title">Tailor your resume</h2>
+              <p class="hint intro-hint">Paste a job description to get started.</p>
             </div>
           </div>
           <form id="parse-form">
-            <label for="jd">Paste the full job description</label>
-            <textarea id="jd" name="jd" placeholder="Paste the role description, requirements, and responsibilities here…" spellcheck="true" required></textarea>
+            <div class="field-heading"><label for="jd">Job description</label><span id="jd-count">0 / 30,000</span></div>
+            <textarea id="jd" name="jd" placeholder="Paste the role, responsibilities, and requirements…" spellcheck="true" maxlength="30000" aria-describedby="jd-help" required></textarea>
             <div class="form-footer">
-              <span>Your master resume stays unchanged.</span>
-              <button id="parse-button" type="submit">Parse job posting</button>
+              <span id="jd-help">Your master resume stays unchanged.</span>
+              <button id="parse-button" type="submit">Continue <span aria-hidden="true">→</span></button>
             </div>
           </form>
         </section>
         <section id="parsed-panel" class="wizard-screen" aria-labelledby="parsed-title" hidden>
           <button id="back-to-jd" type="button" class="back-link">← Back to job posting</button>
-          <p class="step">02 / REVIEW EXTRACTED JOB</p>
-          <h2 id="parsed-title">Check the company, role, and job description</h2>
-          <p class="hint">Review the cleaned posting and edit anything the parser missed before generating.</p>
+          <h2 id="parsed-title">Review job details</h2>
+          <p class="hint">Correct anything we missed before continuing.</p>
           <div class="field-grid">
             <div><label for="company">Company</label><input id="company" type="text" maxlength="250"></div>
             <div><label for="role">Job role</label><input id="role" type="text" maxlength="250"></div>
           </div>
           <label for="jd_text">Cleaned job description</label>
           <textarea id="jd_text" class="cleaned-jd-field" maxlength="30000" spellcheck="true"></textarea>
-          <button id="plan-button" type="button">Suggest resume structure</button>
+          <button id="plan-button" type="button">Analyze role and saved knowledge</button>
         </section>
-        <section id="plan-panel" class="wizard-screen" aria-labelledby="plan-title" hidden>
-          <button id="back-to-parsed" type="button" class="back-link">← Back to parsed job</button>
-          <p class="step">03 / REVIEW STRUCTURE</p>
-          <h2 id="plan-title">Choose what the resume emphasizes</h2>
-          <p id="plan-reason" class="hint"></p>
-          <h3>Section order</h3>
-          <p class="hint">The first three sections can move. Skills stays last.</p>
-          <div id="section-order-controls" class="review-stack"></div>
-          <h3>Five projects and their bullets</h3>
-          <p class="hint">Choose five distinct projects. Keep at least three bullets when available, or every bullet from a shorter master entry.</p>
-          <div id="project-slots" class="review-stack"></div>
-          <h3>Work experience bullets</h3>
-          <p class="hint">Keep three or four bullets when available, or every bullet from a shorter master entry.</p>
-          <div id="work-bullets" class="review-stack"></div>
-          <h3>Skill categories</h3>
-          <div id="skill-category-controls" class="review-stack"></div>
-          <h3>Summary sentences</h3>
-          <p class="hint">The first master sentence is always included.</p>
-          <div id="summary-sentences" class="review-stack"></div>
-          <button id="draft-button" type="button">Approve structure and suggest wording</button>
+        <section id="questions-panel" class="wizard-screen" aria-labelledby="questions-title" hidden>
+          <button id="back-to-parsed" type="button" class="back-link">← Job details</button>
+          <h2 id="questions-title">Fill the useful gaps</h2>
+          <p id="question-intro" class="hint">We check your saved knowledge before asking. Skip anything you don’t know.</p>
+          <details class="selection-reason"><summary>Role requirements and existing evidence</summary><div id="analysis-view"></div></details>
+          <div id="questions" class="review-stack"></div>
+          <div class="step-actions"><button id="save-answers" type="button" class="secondary-button">Save answers</button><button id="generate-button" type="button">Save and generate draft</button></div>
+          <p id="answer-status" class="hint action-hint" role="status"></p>
         </section>
-        <section id="wording-panel" class="wizard-screen" aria-labelledby="wording-title" hidden>
-          <button id="back-to-plan" type="button" class="back-link">← Back to structure</button>
-          <p class="step">04 / REVIEW WORDING</p>
-          <h2 id="wording-title">Review proposed edits</h2>
-          <p class="hint">Review changes by resume entry. Open any edit to compare it with the master and see its supporting evidence.</p>
-          <p id="review-progress" class="hint"></p>
-          <div class="board-toolbar">
-            <div id="review-counts" class="review-counts" aria-label="Review progress"></div>
-            <label class="pending-toggle"><input id="pending-only" type="checkbox"> Show pending only</label>
-          </div>
-          <div id="review-board" class="review-board"></div>
-          <button id="preview-draft-button" type="button" class="secondary-button">Preview current draft PDF</button>
-          <button id="finalize-button" type="button">Build reviewed PDF</button>
+        <section id="review-panel" class="wizard-screen" aria-labelledby="review-title" hidden>
+          <h2 id="review-title">Review your tailored resume</h2>
+          <p class="hint">Review the included content and each proposed change. Evidence is available on demand.</p>
+          <div class="board-toolbar"><p id="review-progress" class="hint" role="status"></p><label class="pending-toggle"><input id="pending-only" type="checkbox"> Pending only</label></div>
+          <p id="check-summary" class="hint" role="status"></p>
+          <button id="check-draft" type="button" class="secondary-button">Check edited passages</button>
+          <details class="selection-reason"><summary>Read the complete draft</summary><div id="complete-draft"></div></details>
+          <details id="layout-report" class="selection-reason" hidden><summary>Formatting needs attention</summary><pre id="layout-details"></pre></details>
+          <div id="changes" class="review-board"></div>
+          <details class="selection-reason"><summary>JD coverage and future recommendations</summary><div id="coverage-view"></div><div id="recommendations"></div></details>
+          <details id="refine-panel" class="edit-options"><summary>Correct selected passages</summary>
+            <label for="repair-fields">Passages to change (select one or more)</label><select id="repair-fields" multiple size="5"></select>
+            <label for="direction">What should change?</label><textarea id="direction" class="edit-field" maxlength="4000" placeholder="For example: emphasize experimental design and model evaluation. Or fit my reviewed choices within the layout rules."></textarea>
+            <p class="hint">Only selected passages will change. Confirm new facts on a passage or add them in Knowledge. Corrections return for review.</p>
+            <button id="refine-button" type="button" class="secondary-button">Correct selected passages</button>
+          </details>
+          <div class="step-actions"><button id="proposal-preview" type="button" class="secondary-button">Preview proposal PDF</button><button id="finalize-button" type="button">Build reviewed PDF</button></div>
+          <p class="hint action-hint">The draft may include unchecked suggestions. Export requires reviewed changes, resolved factual concerns, and passing formatting checks.</p>
         </section>
         <section id="final-panel" class="wizard-screen" aria-labelledby="final-title" hidden>
-          <button id="back-to-wording" type="button" class="back-link">← Back to wording review</button>
-          <p class="step">05 / FINISHED RESUME</p>
-          <h2 id="final-title">Review your tailored PDF</h2>
-          <p class="hint">Check and download the finished PDF before leaving. On a free host, saved reviews and PDFs may disappear when the service sleeps.</p>
+          <button id="back-to-review" type="button" class="back-link">← Back to review</button>
+          <h2 id="final-title">Your resume is ready</h2>
+          <p class="hint">Check the PDF, then download it for your application.</p>
+          <a id="download-final-pdf" class="button-link" download="tailored-resume.pdf">Download PDF <span aria-hidden="true">↓</span></a>
           <button id="view-final-pdf" type="button" class="secondary-button final-pdf-button">View finished PDF</button>
-          <div id="details" class="details" hidden>
-            <p id="review-note" class="review-note"></p>
-            <h3>Selected projects</h3>
-            <ol id="projects"></ol>
-            <h3>Selected summary</h3>
-            <p id="summary" class="summary"></p>
-            <div id="warnings"></div>
-          </div>
+          <p class="hint action-hint">Save your PDF before leaving; hosted sessions may expire.</p>
+          <div id="warnings" role="status"></div>
         </section>
         <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+        <div id="task-actions" hidden><button id="retry-button" type="button" class="secondary-button">Retry task</button></div>
+        <p id="legacy-link" class="hint action-hint" hidden><a href="/legacy">Resume your previous workflow</a></p>
       </section>
 
       <section id="preview-panel" class="panel preview" aria-labelledby="preview-title" hidden>
         <div class="preview-heading">
           <div>
-            <p class="step">DOCUMENT PREVIEW</p>
             <h2 id="preview-title">Resume PDF</h2>
             <p id="preview-caption" class="hint"></p>
           </div>
@@ -122,6 +109,22 @@
         </div>
         <iframe id="pdf-preview" title="Resume PDF preview" src="about:blank"></iframe>
       </section>
-    </main>
+        </div>
+      </main>
+    </div>
+    <dialog id="knowledge-dialog" aria-labelledby="knowledge-title">
+      <div class="preview-heading"><h2 id="knowledge-title">Your knowledge</h2><button id="close-knowledge" type="button" class="secondary-button">Close</button></div>
+      <p class="hint">Confirmed facts can support resume claims. Limitations, uncertainty and plans guide questions and recommendations.</p>
+      <p id="knowledge-storage" class="hint"></p>
+      <div class="knowledge-tools"><button id="new-knowledge" type="button" class="secondary-button">Add information</button><a href="/api/knowledge/export" download="sculpt-knowledge.json">Export JSON</a></div>
+      <div id="knowledge-list" class="review-stack"></div>
+      <form id="knowledge-form" hidden>
+        <div class="field-grid"><div><label for="knowledge-scope">Related experience</label><select id="knowledge-scope"></select></div><div><label for="knowledge-kind">Information type</label><select id="knowledge-kind"><option value="fact">Confirmed experience</option><option value="limitation">Not done / limitation</option><option value="uncertain">Uncertain</option><option value="planned">Future plan</option></select></div></div>
+        <label for="knowledge-text">What should the assistant know?</label><textarea id="knowledge-text" maxlength="8000" required></textarea>
+        <button type="submit">Save knowledge</button>
+      </form>
+      <p id="knowledge-status" class="status" role="status" hidden></p>
+    </dialog>
+    <dialog id="reset-dialog" aria-labelledby="reset-title"><form method="dialog"><h2 id="reset-title">Start a new resume?</h2><p>This starts a new application. Your saved knowledge is retained. Download any finished PDF you want to keep.</p><div class="action-grid"><button value="cancel" class="secondary-button" autofocus>Keep working</button><button value="reset">Start new resume</button></div></form></dialog>
   </body>
 </html>

@@ -2,9 +2,9 @@
 
 These are content recommendations for adapting a separate tailored resume to a job description.
 Hard limits and the approved layout are enforced by `config/rules.yaml` plus
-`config/profiles/tailored.yaml`. The current web AI does not read this file; it follows
-its selection and wording prompts plus code-enforced rules. Wording suggestions require
-explicit user review before they enter a tailored PDF.
+`config/profiles/tailored.yaml`. Guided drafting reads this file along with the hard
+rules, JD and evidence. Proposed changes require explicit user review before they
+enter the final tailored PDF.
 
 ## Bullet Quality
 
@@ -18,7 +18,7 @@ explicit user review before they enter a tailored PDF.
 
 - Place the most relevant projects for the target role first
 - Select exactly 5 projects from `content/master.yaml`, using their stable project IDs.
-- Select 3 or 4 existing bullets for entries with at least 4 source bullets. Keep every bullet from a source entry with only 2 or 3. Prefer 4 when all are relevant; never invent or pad a bullet to reach the minimum.
+- Use 3 or 4 bullets for entries with at least 4 source bullets. Keep every bullet ID from a source entry with only 2 or 3. Reframe or synthesize confirmed facts within the same entry; prefer 4 substantive bullets when relevant. Never invent or pad content to reach the minimum.
 - Tailor the summary to align with the job description's key requirements
 - Emphasize skills and technologies that match the JD
 - Remove or deprioritize projects unrelated to the target role
@@ -34,6 +34,8 @@ explicit user review before they enter a tailored PDF.
 
 - NEVER invent facts, metrics, companies, or technologies
 - NEVER exaggerate role or responsibility level
+- Cite the master facts or confirmed saved knowledge supporting every proposed field.
+- Keep future projects and uncompleted work in recommendations, outside resume claims.
 - If uncertain about a number, omit it rather than fabricate
 - Flag any AI-generated content for manual review before finalizing
 

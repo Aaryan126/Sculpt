@@ -19,6 +19,8 @@ import uuid
 
 import yaml
 
+import guided_service
+
 from review_flow import (
     apply_decisions, candidates_for_selection, plan_catalog, request_suggestions,
     revise_suggestion,
@@ -130,8 +132,12 @@ class Handler(BaseHTTPRequestHandler):
         if not self._authorized():
             return
         request_path = urlsplit(self.path).path
+        if guided_service.get(self, request_path):
+            return
         assets = {
             "/": (WEB_DIR / "index.html", "text/html; charset=utf-8"),
+            "/legacy": (WEB_DIR / "legacy.html", "text/html; charset=utf-8"),
+            "/legacy.js": (WEB_DIR / "legacy.js", "text/javascript; charset=utf-8"),
             "/app.js": (WEB_DIR / "app.js", "text/javascript; charset=utf-8"),
             "/style.css": (WEB_DIR / "style.css", "text/css; charset=utf-8"),
             "/api/master.pdf": (ROOT / "output" / "resume.pdf", "application/pdf"),
@@ -166,7 +172,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self._authorized():
             return
-        if self.path not in {"/api/parse", "/api/plan", "/api/draft", "/api/decision", "/api/revise", "/api/preview", "/api/finalize"}:
+        if self.path not in guided_service.POST_PATHS | {"/api/parse", "/api/plan", "/api/draft", "/api/decision", "/api/revise", "/api/preview", "/api/finalize"}:
             self._json(404, {"error": "Not found."})
             return
         if self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower() != "application/json":
@@ -187,6 +193,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         if not isinstance(body, dict):
             self._json(400, {"error": "Request must be an object."})
+            return
+        if guided_service.post(self, self.path, body):
             return
         if self.path == "/api/parse":
             jd = body.get("jd", "")

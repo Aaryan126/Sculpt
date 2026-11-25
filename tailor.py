@@ -1,6 +1,7 @@
 """Select verified master-resume content for one job description."""
 
 from copy import deepcopy
+import http.client
 import json
 import os
 from pathlib import Path
@@ -23,6 +24,10 @@ ENV_PATH = ROOT / ".env"
 
 class TailorError(Exception):
     """A configuration, AI, or content-selection error safe to show in the UI."""
+
+
+class AIServiceError(TailorError):
+    """A transport/provider failure; rewriting resume content cannot repair it."""
 
 
 def load_env():
@@ -186,7 +191,53 @@ def _extract_json(content):
         raise TailorError(f"AI returned invalid JSON: {error}") from error
 
 
-def _request_json(messages, operation="AI request"):
+def _read_event_stream(response, operation, progress, started):
+    """Read completed SSE content only. Never expose model reasoning in progress or logs."""
+    content, size, completed = [], 0, False
+    last_progress = started
+    for raw in response:
+        if progress and time.monotonic() - last_progress >= 10:
+            progress(round(time.monotonic() - started))
+            last_progress = time.monotonic()
+        if not raw.startswith(b"data:"):
+            continue
+        data = raw[5:].strip()
+        if data == b"[DONE]":
+            completed = True
+            break
+        if not data:
+            continue
+        try:
+            event = json.loads(data)
+        except (ValueError, UnicodeDecodeError) as error:
+            raise AIServiceError(f"SoCLaaS sent an invalid stream during {operation}. Retry the unfinished part.") from error
+        if not isinstance(event, dict) or event.get("error"):
+            raise AIServiceError(f"SoCLaaS reported a stream error during {operation}. Retry the unfinished part.")
+        choices = event.get("choices", [])
+        if not isinstance(choices, list):
+            raise AIServiceError(f"SoCLaaS sent an invalid stream during {operation}.")
+        for choice in choices:
+            if not isinstance(choice, dict) or not isinstance(choice.get("delta", {}), dict):
+                raise AIServiceError(f"SoCLaaS sent an invalid stream during {operation}.")
+            if choice.get("index", 0) != 0:
+                continue
+            text = choice.get("delta", {}).get("content")
+            if isinstance(text, str):
+                content.append(text)
+                size += len(text)
+                if size > 2_000_000:
+                    raise AIServiceError("SoCLaaS response exceeded the supported size.")
+            reason = choice.get("finish_reason")
+            if reason == "stop":
+                completed = True
+            elif reason is not None:
+                raise AIServiceError(f"SoCLaaS did not complete {operation} (finish reason: {reason}). Retry the unfinished part.")
+    if not completed or not content:
+        raise AIServiceError(f"SoCLaaS disconnected before completing {operation}. Retry the unfinished part.")
+    return "".join(content)
+
+
+def _request_json(messages, operation="AI request", progress=None):
     env = load_env()
     base_url = env.get("SOCLAAS_BASE_URL", "").rstrip("/")
     api_key = env.get("SOCLAAS_API_KEY", "").strip()
@@ -203,7 +254,7 @@ def _request_json(messages, operation="AI request"):
     if not 30 <= timeout_seconds <= 600:
         raise TailorError("SOCLAAS_TIMEOUT_SECONDS must be a whole number from 30 to 600.")
     endpoint = base_url + "/chat/completions"
-    body = {"model": model, "messages": messages, "temperature": 0.2, "stream": False}
+    body = {"model": model, "messages": messages, "temperature": 0.2, "stream": True}
     request = urllib.request.Request(
         endpoint,
         data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
@@ -211,31 +262,39 @@ def _request_json(messages, operation="AI request"):
         method="POST",
     )
     started = time.monotonic()
-    print(f"SoCLaaS {operation}: sent {len(request.data)} bytes; waiting up to {timeout_seconds}s", file=sys.stderr, flush=True)
+    print(f"SoCLaaS {operation}: sent {len(request.data)} bytes; streaming with {timeout_seconds}s inactivity timeout", file=sys.stderr, flush=True)
+    content = None
     try:
         with urllib.request.urlopen(request, timeout=timeout_seconds, context=_ssl_context()) as response:
-            result = json.load(response)
+            if "text/event-stream" in response.headers.get("Content-Type", ""):
+                content = _read_event_stream(response, operation, progress, started)
+            else:
+                # Some compatible providers return a normal JSON response even with stream=true.
+                result = json.load(response)
     except urllib.error.HTTPError as error:
         detail = error.read(600).decode("utf-8", errors="replace")
-        raise TailorError(f"SoCLaaS returned HTTP {error.code}: {detail}") from error
+        raise AIServiceError(f"SoCLaaS returned HTTP {error.code}: {detail}") from error
     except TimeoutError as error:
-        raise TailorError(
-            f"SoCLaaS timed out during {operation} after {round(time.monotonic() - started)} seconds. "
-            "The service did not finish responding; please try again."
+        raise AIServiceError(
+            f"SoCLaaS stopped sending response data during {operation} for {timeout_seconds} seconds. "
+            "Retry the unfinished part; completed parts are saved."
         ) from error
     except urllib.error.URLError as error:
         if isinstance(error.reason, TimeoutError) or "timed out" in str(error.reason).lower():
-            raise TailorError(
-                f"SoCLaaS timed out during {operation} after {round(time.monotonic() - started)} seconds. "
-                "The service did not finish responding; please try again."
+            raise AIServiceError(
+                f"SoCLaaS stopped sending response data during {operation} for {timeout_seconds} seconds. "
+                "Retry the unfinished part; completed parts are saved."
             ) from error
-        raise TailorError(f"Could not reach SoCLaaS during {operation}: {error}") from error
+        raise AIServiceError(f"Could not reach SoCLaaS during {operation}: {error}") from error
     except json.JSONDecodeError as error:
         raise TailorError("SoCLaaS returned invalid response JSON.") from error
-    try:
-        content = result["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, TypeError) as error:
-        raise TailorError("SoCLaaS response did not contain a chat message.") from error
+    except (ConnectionError, http.client.IncompleteRead) as error:
+        raise AIServiceError(f"SoCLaaS disconnected during {operation}. Retry the unfinished part; completed parts are saved.") from error
+    if content is None:
+        try:
+            content = result["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError) as error:
+            raise TailorError("SoCLaaS response did not contain a chat message.") from error
     print(f"SoCLaaS {operation}: response received in {round(time.monotonic() - started)}s", file=sys.stderr, flush=True)
     return _extract_json(content)
 
